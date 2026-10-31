@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
-<meta name="theme-color" content="#0b101b"/><meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0b101b"/>
+<meta name="referrer" content="strict-origin-when-cross-origin"/><meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="description" content="A free, offline-capable, two-deck mobile DJ mixer for your own audio files."/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%9B%EF%B8%8F%3C/text%3E%3C/svg%3E"/>
@@ -40,6 +41,9 @@
 .yt-mode .stem-section,.yt-mode .mixcontrols,.yt-mode .fxrow{opacity:.38;pointer-events:none}
 .yt-mode .wavebox{opacity:.25;pointer-events:none}
 .yt-note{font-size:10px;color:#e9c1a6;margin:6px 0 2px;text-align:center;line-height:1.4}
+.yt-open{display:inline-flex;justify-content:center;align-items:center;margin:7px 0 3px;border:1px solid #567e81;border-radius:9px;padding:8px 12px;color:#d1fbf1;background:#182a35;text-decoration:none;font-size:11px;font-weight:800;min-height:36px}
+.yt-error{border:1px solid #a25c54;color:#ffd8c7;background:#392b30;border-radius:9px;padding:9px;margin:8px 0 0;font-size:10px;line-height:1.5}
+.yt-error[hidden]{display:none}.yt-slot{min-width:0}
 .yt-mode .stem-status{color:#f3b59b}
 .yt-mode [data-act="cue"],.yt-mode [data-act="loop"]{opacity:.35;pointer-events:none}
 .yt-micro{font-size:10px;color:var(--muted);line-height:1.5;margin-top:8px}
@@ -94,8 +98,8 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
 
 <section class="mixer"><div class="mixer-header"><span>MASTER CROSSFADER</span><span id="master-state">READY</span></div><div class="cross-row"><div class="fader-side a">A</div><input class="range" aria-label="Crossfader" id="cross" type="range" min="0" max="100" value="50"/><div class="fader-side b">B</div></div><div class="mixer-bottom"><span>A ◀</span><span>Drag toward the track you want to hear</span><span>▶ B</span></div></section>
 <main class="deck-grid">
-<section class="deck a" data-deck="a"><div class="deck-head"><div style="min-width:0"><div class="deck-id">DECK A</div><div class="deck-song" id="title-a">No track loaded</div></div><div class="badge" id="source-a">EMPTY</div></div><div class="wavebox" id="wavebox-a"><canvas class="wave" id="wave-a"></canvas><div class="wave-cursor" id="cursor-a"></div></div><div class="deck-mid"><div class="yt-slot" id="yt-wrap-a"><div class="yt-video" id="yt-player-a"></div><div class="yt-note">YOUTUBE MODE · Official video player · Tap ▶ in video if needed</div></div><div class="platter" id="platter-a" aria-label="Scratch deck A"><div class="record-label"><strong>A</strong><span>VINYL</span></div></div><div class="clock" id="clock-a">00:00 / 00:00</div></div><div class="control-line"><button class="btn play" data-act="play" data-id="a">▶</button><button class="btn" data-act="cue" data-id="a">CUE</button><button class="btn" data-act="loop" data-id="a">4 LOOP</button></div><div class="input-line"><button class="btn" data-act="openTrack" data-id="a">＋ TRACK</button><button class="btn" data-act="openStems" data-id="a">＋ 4 STEMS</button><input id="file-a" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac"/><input id="stems-a" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac" multiple/></div><div class="mixcontrols"><div class="controller"><label><span>TEMPO</span><span id="tempo-label-a">100%</span></label><input class="range" id="tempo-a" type="range" min="75" max="125" value="100"/></div><div class="controller"><label><span>FILTER</span><span id="filter-label-a">OFF</span></label><input class="range" id="filter-a" type="range" min="-100" max="100" value="0"/></div><div class="controller"><label><span>BPM</span></label><div class="bpm-set"><input id="bpm-a" type="number" min="40" max="250" value="120"/><button class="btn small" data-act="tap" data-id="a">TAP</button></div></div><div class="controller"><label><span>VOLUME</span><span id="gain-label-a">90%</span></label><input class="range" id="gain-a" type="range" min="0" max="100" value="90"/></div></div><div class="fxrow"><button class="btn small" data-act="sync" data-id="a">SYNC</button><button class="btn small" data-act="echo" data-id="a">ECHO</button><button class="btn small" data-act="cueSet" data-id="a">SET CUE</button></div><div class="stem-section"><div class="section-label"><span>STEMS</span><span class="stem-status" id="stem-status-a">load 4 stem files</span></div><div id="stemrows-a"></div></div></section>
-<section class="deck b" data-deck="b"><div class="deck-head"><div style="min-width:0"><div class="deck-id">DECK B</div><div class="deck-song" id="title-b">No track loaded</div></div><div class="badge" id="source-b">EMPTY</div></div><div class="wavebox" id="wavebox-b"><canvas class="wave" id="wave-b"></canvas><div class="wave-cursor" id="cursor-b"></div></div><div class="deck-mid"><div class="yt-slot" id="yt-wrap-b"><div class="yt-video" id="yt-player-b"></div><div class="yt-note">YOUTUBE MODE · Official video player · Tap ▶ in video if needed</div></div><div class="platter" id="platter-b" aria-label="Scratch deck B"><div class="record-label"><strong>B</strong><span>VINYL</span></div></div><div class="clock" id="clock-b">00:00 / 00:00</div></div><div class="control-line"><button class="btn play" data-act="play" data-id="b">▶</button><button class="btn" data-act="cue" data-id="b">CUE</button><button class="btn" data-act="loop" data-id="b">4 LOOP</button></div><div class="input-line"><button class="btn" data-act="openTrack" data-id="b">＋ TRACK</button><button class="btn" data-act="openStems" data-id="b">＋ 4 STEMS</button><input id="file-b" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac"/><input id="stems-b" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac" multiple/></div><div class="mixcontrols"><div class="controller"><label><span>TEMPO</span><span id="tempo-label-b">100%</span></label><input class="range" id="tempo-b" type="range" min="75" max="125" value="100"/></div><div class="controller"><label><span>FILTER</span><span id="filter-label-b">OFF</span></label><input class="range" id="filter-b" type="range" min="-100" max="100" value="0"/></div><div class="controller"><label><span>BPM</span></label><div class="bpm-set"><input id="bpm-b" type="number" min="40" max="250" value="120"/><button class="btn small" data-act="tap" data-id="b">TAP</button></div></div><div class="controller"><label><span>VOLUME</span><span id="gain-label-b">90%</span></label><input class="range" id="gain-b" type="range" min="0" max="100" value="90"/></div></div><div class="fxrow"><button class="btn small" data-act="sync" data-id="b">SYNC</button><button class="btn small" data-act="echo" data-id="b">ECHO</button><button class="btn small" data-act="cueSet" data-id="b">SET CUE</button></div><div class="stem-section"><div class="section-label"><span>STEMS</span><span class="stem-status" id="stem-status-b">load 4 stem files</span></div><div id="stemrows-b"></div></div></section>
+<section class="deck a" data-deck="a"><div class="deck-head"><div style="min-width:0"><div class="deck-id">DECK A</div><div class="deck-song" id="title-a">No track loaded</div></div><div class="badge" id="source-a">EMPTY</div></div><div class="wavebox" id="wavebox-a"><canvas class="wave" id="wave-a"></canvas><div class="wave-cursor" id="cursor-a"></div></div><div class="deck-mid"><div class="yt-slot" id="yt-wrap-a"><div class="yt-video" id="yt-player-a"></div><div class="yt-note">YOUTUBE MODE · Play using the official video. Some iPhones block embeds.</div><a class="yt-open" id="yt-open-a" href="https://www.youtube.com/" target="_blank" rel="noopener">OPEN ON YOUTUBE ↗</a><div class="yt-error" id="yt-error-a" role="alert" hidden></div></div><div class="platter" id="platter-a" aria-label="Scratch deck A"><div class="record-label"><strong>A</strong><span>VINYL</span></div></div><div class="clock" id="clock-a">00:00 / 00:00</div></div><div class="control-line"><button class="btn play" data-act="play" data-id="a">▶</button><button class="btn" data-act="cue" data-id="a">CUE</button><button class="btn" data-act="loop" data-id="a">4 LOOP</button></div><div class="input-line"><button class="btn" data-act="openTrack" data-id="a">＋ TRACK</button><button class="btn" data-act="openStems" data-id="a">＋ 4 STEMS</button><input id="file-a" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac"/><input id="stems-a" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac" multiple/></div><div class="mixcontrols"><div class="controller"><label><span>TEMPO</span><span id="tempo-label-a">100%</span></label><input class="range" id="tempo-a" type="range" min="75" max="125" value="100"/></div><div class="controller"><label><span>FILTER</span><span id="filter-label-a">OFF</span></label><input class="range" id="filter-a" type="range" min="-100" max="100" value="0"/></div><div class="controller"><label><span>BPM</span></label><div class="bpm-set"><input id="bpm-a" type="number" min="40" max="250" value="120"/><button class="btn small" data-act="tap" data-id="a">TAP</button></div></div><div class="controller"><label><span>VOLUME</span><span id="gain-label-a">90%</span></label><input class="range" id="gain-a" type="range" min="0" max="100" value="90"/></div></div><div class="fxrow"><button class="btn small" data-act="sync" data-id="a">SYNC</button><button class="btn small" data-act="echo" data-id="a">ECHO</button><button class="btn small" data-act="cueSet" data-id="a">SET CUE</button></div><div class="stem-section"><div class="section-label"><span>STEMS</span><span class="stem-status" id="stem-status-a">load 4 stem files</span></div><div id="stemrows-a"></div></div></section>
+<section class="deck b" data-deck="b"><div class="deck-head"><div style="min-width:0"><div class="deck-id">DECK B</div><div class="deck-song" id="title-b">No track loaded</div></div><div class="badge" id="source-b">EMPTY</div></div><div class="wavebox" id="wavebox-b"><canvas class="wave" id="wave-b"></canvas><div class="wave-cursor" id="cursor-b"></div></div><div class="deck-mid"><div class="yt-slot" id="yt-wrap-b"><div class="yt-video" id="yt-player-b"></div><div class="yt-note">YOUTUBE MODE · Play using the official video. Some iPhones block embeds.</div><a class="yt-open" id="yt-open-b" href="https://www.youtube.com/" target="_blank" rel="noopener">OPEN ON YOUTUBE ↗</a><div class="yt-error" id="yt-error-b" role="alert" hidden></div></div><div class="platter" id="platter-b" aria-label="Scratch deck B"><div class="record-label"><strong>B</strong><span>VINYL</span></div></div><div class="clock" id="clock-b">00:00 / 00:00</div></div><div class="control-line"><button class="btn play" data-act="play" data-id="b">▶</button><button class="btn" data-act="cue" data-id="b">CUE</button><button class="btn" data-act="loop" data-id="b">4 LOOP</button></div><div class="input-line"><button class="btn" data-act="openTrack" data-id="b">＋ TRACK</button><button class="btn" data-act="openStems" data-id="b">＋ 4 STEMS</button><input id="file-b" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.flac"/><input id="stems-b" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac" multiple/></div><div class="mixcontrols"><div class="controller"><label><span>TEMPO</span><span id="tempo-label-b">100%</span></label><input class="range" id="tempo-b" type="range" min="75" max="125" value="100"/></div><div class="controller"><label><span>FILTER</span><span id="filter-label-b">OFF</span></label><input class="range" id="filter-b" type="range" min="-100" max="100" value="0"/></div><div class="controller"><label><span>BPM</span></label><div class="bpm-set"><input id="bpm-b" type="number" min="40" max="250" value="120"/><button class="btn small" data-act="tap" data-id="b">TAP</button></div></div><div class="controller"><label><span>VOLUME</span><span id="gain-label-b">90%</span></label><input class="range" id="gain-b" type="range" min="0" max="100" value="90"/></div></div><div class="fxrow"><button class="btn small" data-act="sync" data-id="b">SYNC</button><button class="btn small" data-act="echo" data-id="b">ECHO</button><button class="btn small" data-act="cueSet" data-id="b">SET CUE</button></div><div class="stem-section"><div class="section-label"><span>STEMS</span><span class="stem-status" id="stem-status-b">load 4 stem files</span></div><div id="stemrows-b"></div></div></section>
 </main>
 <div class="bottom-info"><div class="info-card"><h2>Two sources, one mixer</h2><p><b>YouTube:</b> search with your own free API key or paste a link; play in an official embedded player. <b>Local:</b> full DJ controls, true touch scrubbing, stems, FX and master recording.</p></div><div class="info-card"><h2>Real stems, not fake buttons</h2><p>Tap <b>TRY DEMO</b> for original four-stem music. For your songs, import four aligned files named <b>vocals, drums, bass, other</b> (pre-separated). Automatic AI separation is not implemented in this web build.</p></div></div>
 <details class="info-card privacy" id="privacy" style="margin-top:10px"><summary style="font-weight:750;cursor:pointer">Privacy and YouTube API information</summary><p style="margin-top:8px">This app does not operate a server for your music or keep a cloud library. Imported local audio stays in your browser memory. The app may cache its code offline on your device. Using YouTube services sends search terms and the API key you enter to Google, and embedded YouTube playback shares standard player and device data with Google. Google may collect cookies, device information and playback data under its <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>. Your API key is not stored by this page after closing it. By enabling YouTube features, you agree to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube Terms of Service</a>. This is an open source prototype for personal use; there is no developer-operated user account or backend.</p></details>
@@ -201,16 +205,43 @@ function setYTVolumes(){
  try{ytPlayers[d.id].setVolume(vol)}catch(e){}
  }
 }
-function createOrCueYT(d){if(!youtubeApiReady||!d.youtube||!d.ytId)return;
+function createOrCueYT(d){
+ if(!youtubeApiReady||!d.youtube||!d.ytId)return;
  try{
- if(ytPlayers[d.id]&&d.ytReady){ytPlayers[d.id].cueVideoById(d.ytId);setYTVolumes();ytMessage('YouTube video cued in Deck '+d.id.toUpperCase()+' — tap play on its video.');return}
- if(ytPlayers[d.id])return;
- ytPlayers[d.id]=new YT.Player('yt-player-'+d.id,{width:'100%',height:'100%',videoId:d.ytId,playerVars:{controls:1,playsinline:1,rel:0},events:{
- onReady:e=>{d.ytReady=true;e.target.cueVideoById(d.ytId);setYTVolumes();ytMessage('Deck '+d.id.toUpperCase()+' ready — play using the visible YouTube player.');},
- onStateChange:e=>{if(!d.youtube)return;setYTVolumes();d.playing=e.data===YT.PlayerState.PLAYING;updateTransport(d);},
- onError:e=>{ytMessage('YouTube video could not play in an embed (code '+e.data+'). Try another video.');toast('This YouTube video cannot be embedded')}
- }})
- }catch(e){ytMessage('Could not create YouTube player: '+e.message)}
+  if(ytPlayers[d.id]&&d.ytReady){
+   ytPlayers[d.id].cueVideoById(d.ytId);
+   setYTVolumes();
+   ytMessage('YouTube video cued in Deck '+d.id.toUpperCase()+' — tap play in its video.');
+   return;
+  }
+  if(ytPlayers[d.id])return;
+  const holder=$('#yt-player-'+d.id);
+  const frame=document.createElement('iframe');
+  frame.id='yt-iframe-'+d.id;
+  frame.title='YouTube player for Deck '+d.id.toUpperCase();
+  frame.referrerPolicy='strict-origin-when-cross-origin';
+  frame.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  frame.allowFullscreen=true;
+  frame.style.cssText='width:100%;height:100%;display:block;border:0';
+  frame.src='https://www.youtube.com/embed/'+encodeURIComponent(d.ytId)+'?enablejsapi=1&playsinline=1&controls=1&rel=0&origin='+encodeURIComponent(location.origin);
+  holder.replaceChildren(frame);
+  ytPlayers[d.id]=new YT.Player(frame,{
+   width:'100%',height:'100%',playerVars:{controls:1,playsinline:1,rel:0,origin:location.origin},
+   events:{
+    onReady:e=>{d.ytReady=true;$('#yt-error-'+d.id).hidden=true;e.target.cueVideoById(d.ytId);setYTVolumes();ytMessage('Deck '+d.id.toUpperCase()+' ready — tap play in the YouTube player.');},
+    onStateChange:e=>{if(!d.youtube)return;setYTVolumes();d.playing=e.data===YT.PlayerState.PLAYING;updateTransport(d);},
+    onError:e=>{
+     const code=Number(e.data);
+     const msg=code===153?'YouTube rejected the iPhone embed (error 153: missing website identification). Try opening Pocket Deck directly in Safari; otherwise use OPEN ON YOUTUBE below.':(code===101||code===150)?'The uploader has disabled embedded playback of this video. Choose a different video or use OPEN ON YOUTUBE.':'YouTube playback failed in the embed (error '+code+'). Use OPEN ON YOUTUBE or choose another video.';
+     const notice=$('#yt-error-'+d.id);notice.textContent=msg;notice.hidden=false;ytMessage(msg);toast('YouTube video blocked in embedded player');
+    }
+   }
+  });
+ }catch(e){
+  const msg='Embedded YouTube player failed to initialise: '+e.message;
+  ytMessage(msg);
+  const notice=$('#yt-error-'+d.id);notice.textContent=msg+' · Use OPEN ON YOUTUBE.';notice.hidden=false;
+ }
 }
 function loadYTDeck(d,id,title){
  if(!$('#yt-consent').checked){toast('Tick the YouTube terms checkbox first');ytMessage('Please agree to the YouTube terms and app privacy notice first.');return}
@@ -219,17 +250,20 @@ function loadYTDeck(d,id,title){
  d.youtube=true;d.ytId=id;d.ytReady=Boolean(d.ytReady);d.playing=false;d.loaded=true;d.duration=0;d.position=0;d.wave=[];d.scratching=false;
  const prev=d.loadedName;
  d.loadedName=title||'YouTube · '+id; $(`#title-${d.id}`).textContent=d.loadedName;
+ $('#yt-open-'+d.id).href='https://www.youtube.com/watch?v='+encodeURIComponent(id);
+ $('#yt-error-'+d.id).hidden=true;
  $(`#source-${d.id}`).textContent='YOUTUBE';$(`#stem-status-${d.id}`).textContent='Not available for YouTube';
  $(`.deck[data-deck=${d.id}]`).classList.add('yt-mode');drawWave(d);updateTransport(d);
  ytMessage('Loading YouTube video into Deck '+d.id.toUpperCase()+'…');ensureYoutubeAPI();if(youtubeApiReady)createOrCueYT(d)
 }
 function exitYoutube(d){
  if(!d.youtube)return;
- if(ytPlayers[d.id]&&d.ytReady){try{ytPlayers[d.id].pauseVideo()}catch(e){}}
+ if(ytPlayers[d.id]){try{ytPlayers[d.id].destroy()}catch(e){}ytPlayers[d.id]=null;d.ytReady=false;}
+ $('#yt-player-'+d.id).replaceChildren();$('#yt-error-'+d.id).hidden=true;
  d.youtube=false;d.playing=false; $(`.deck[data-deck=${d.id}]`).classList.remove('yt-mode');
 }
 async function toggleYTPlayback(d){
- if(!d.ytReady||!ytPlayers[d.id]){toast('YouTube player still loading. Tap play inside the video.');return}
+ if(!d.ytReady||!ytPlayers[d.id]){toast('YouTube player not ready; use OPEN ON YOUTUBE below the video.');return}
  try{if(d.playing)ytPlayers[d.id].pauseVideo();else ytPlayers[d.id].playVideo()}catch(e){toast('Play video using the embedded YouTube controls')}
 }
 async function searchYT(){

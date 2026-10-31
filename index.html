@@ -95,6 +95,27 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
 .lib-acts .lib-target.a{background:#275d59;color:#b3fff2}.lib-acts .lib-target.b{background:#65513b;color:#ffddaa}
 .lib-acts .lib-delete{color:#ffadb5}.lib-empty{color:var(--muted);font-size:11px;margin:10px 0}
 @media(max-width:500px){.lib-toolbar{gap:5px}.lib-toolbar .btn{padding:8px;font-size:10px}.music-library>summary{padding:11px}.lib-inner{padding:0 10px 10px}}
+/* Optional ytpmp3 beta API connector */
+.ytp-panel{border:1px solid #3b5865;background:linear-gradient(130deg,#112831,#111922);border-radius:16px;margin:0 0 12px;overflow:hidden}
+.ytp-panel>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px;color:#b9efe4;cursor:pointer;font-weight:850;letter-spacing:.05em;font-size:12px}
+.ytp-panel>summary::-webkit-details-marker{display:none}
+.ytp-tag{border:1px solid #436574;border-radius:20px;color:#aad2df;font-size:9px;padding:4px 7px;letter-spacing:.06em}
+.ytp-inner{padding:0 12px 13px}
+.ytp-note{font-size:10px;color:#a0b5c5;line-height:1.6;margin:9px 0}
+.ytp-fields{display:grid;grid-template-columns:100px minmax(0,1fr) auto;align-items:center;gap:7px}
+.ytp-fields label{font-size:10px;letter-spacing:.05em;font-weight:800;color:#a9c5d2}
+.ytp-fields input{min-width:0}
+.ytp-fields label[for="ytp-key"]{grid-column:1}
+#ytp-key{grid-column:2 / 4}
+.ytp-approval{display:flex;gap:9px;align-items:flex-start;font-size:11px;color:#d4e4e4;margin:12px 0}
+.ytp-approval input{accent-color:#4cc5ad;width:16px;height:16px;margin:0}
+.ytp-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ytp-docs{color:#a0e9df;font-size:11px;text-decoration:none}
+.ytp-message{font-size:11px;color:#95dfcd;line-height:1.5;min-height:18px;margin:11px 0}
+.ytp-message.error{color:#ffbab5}
+#ytp-download{display:inline-flex;margin-bottom:5px;text-decoration:none}
+#ytp-download[hidden]{display:none}
+@media(max-width:600px){.ytp-fields{grid-template-columns:minmax(0,1fr) auto}.ytp-fields label{grid-column:1 / -1}.ytp-fields label[for="ytp-key"]{grid-column:1 / -1}.ytp-fields #ytp-key{grid-column:1 / -1}.ytp-inner{padding:0 9px 11px}}
 </style>
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="icon" href="./icon.svg" type="image/svg+xml"/>
@@ -115,6 +136,25 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
  <label class="yt-consent"><input type="checkbox" id="yt-consent"/><span>I agree to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube Terms</a> and the <a href="#privacy">app privacy notice</a> before using YouTube services.</span></label>
  <div class="yt-micro">YouTube playback is in visible, official video players. Scratching, stems, filters, effects, loops and recording apply to <strong>local files only</strong>. YouTube on iPhone may require pressing play in the video itself; volume crossfade may be limited by iOS.</div>
 </section>
+
+<details class="ytp-panel" id="ytp-panel">
+ <summary><span>↧ YTPMP3 · IMPORT AUDIO</span><span class="ytp-tag">BETA API</span></summary>
+ <div class="ytp-inner">
+  <p class="ytp-note">For videos and audio you own or have permission to download. Converts through ytpmp3 and imports the result into your saved music library for local DJ playback.</p>
+  <div class="ytp-fields">
+   <label for="ytp-url">VIDEO LINK</label>
+   <input id="ytp-url" class="yt-input" inputmode="url" type="url" placeholder="Paste YouTube watch or share link"/>
+   <button id="ytp-use-link" class="btn small" type="button">USE LINK ABOVE</button>
+   <label for="ytp-key">YTPMP3 API KEY</label>
+   <input id="ytp-key" class="yt-input" type="password" autocomplete="off" placeholder="Beta key · not saved"/>
+  </div>
+  <label class="ytp-approval"><input type="checkbox" id="ytp-rights"/><span>I own this audio or have permission to download and use it.</span></label>
+  <div class="ytp-actions"><button id="ytp-convert" class="btn primary" type="button">CONVERT + SAVE MP3</button><a class="ytp-docs" href="https://ytpmp3.com/api-docs" rel="noopener" target="_blank">Get API access ↗</a></div>
+  <p class="ytp-message" id="ytp-status" role="status">Beta API key required.</p>
+  <a id="ytp-download" class="btn small" rel="noopener" target="_blank" hidden>DOWNLOAD MP3</a>
+  <p class="ytp-note">Provider requires an activated beta API key. Conversion requires an internet connection. Your key is used in this browser and is never published to GitHub.</p>
+ </div>
+</details>
 
 <details class="music-library" id="music-library" open>
  <summary><span>♫ SAVED MUSIC LIBRARY</span><span id="lib-count">0 songs</span></summary>
@@ -332,5 +372,5 @@ $('#yt-open-search').addEventListener('click',()=>{const query=$('#yt-query').va
 setInterval(()=>{for(const d of Object.values(deck))if(d.youtube&&d.ytReady&&ytPlayers[d.id]){try{d.position=ytPlayers[d.id].getCurrentTime()||0;d.duration=ytPlayers[d.id].getDuration()||0;updateTransport(d)}catch(e){}}},300);
 addEventListener('resize',()=>Object.values(deck).forEach(drawWave));Object.values(deck).forEach(drawWave);
 // Standalone single-file deployment: no service worker required.
-</script><script src="./library.js" defer></script><script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>
+</script><script src="./library.js" defer></script><script src="./ytpmp3.js" defer></script><script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>
 </body></html>

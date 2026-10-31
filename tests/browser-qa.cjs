@@ -161,7 +161,16 @@ async function runProject(type,device,url){
   await until(page,'window.decked.status("b").loaded && window.decked.status("b").name.includes("quick")');
   await page.locator('#open-library').click();
   await page.locator('#lib-files').setInputFiles([file('rush-one.wav',300),file('rush-two.wav',360)]);
-  await until(page,'document.getElementById("lib-tracks").textContent.includes("rush-one") && document.getElementById("lib-tracks").textContent.includes("rush-two")',22000);
+  try{
+   await until(page,'document.getElementById("lib-tracks").textContent.includes("rush-one") && document.getElementById("lib-tracks").textContent.includes("rush-two")',22000);
+  }catch(error){
+   const state=await page.evaluate(()=>({message:document.getElementById('lib-message')?.textContent,
+    tracks:document.getElementById('lib-tracks')?.textContent,count:document.getElementById('lib-count')?.textContent,
+    open:document.getElementById('music-library')?.open}));
+   console.error('MULTI_IMPORT_DIAGNOSTIC '+prefix+' '+JSON.stringify(state));
+   await page.screenshot({path:path.join(out,prefix+'-multi-import-error.png'),fullPage:true});
+   throw error;
+  }
  });
  await test('4 stems, individual level, mute and panel',async()=>{
   await page.locator('#stems-file-b').setInputFiles([file('vocals.wav',330),file('drums.wav',250),file('bass.wav',130),file('other.wav',420)]);

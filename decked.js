@@ -60,6 +60,7 @@ function drop(d) {
  if(d.graph && d.graph.inputs){for(const input of d.graph.inputs){try{input.source.disconnect();input.gain.disconnect()}catch(e){}}d.graph.inputs=[]}
  for(const url of d.urls){try{URL.revokeObjectURL(url)}catch(e){}}
  d.urls=[];d.loaded=false;d.loading=false;d.playing=false;d.looping=false;d.fx=false;d.scratch=false;
+ d.originalFile=null;d.generatedStems=false;
  d.scratchGeneration=(d.scratchGeneration||0)+1;
  d.scratchFile=null;d.scratchReady=false;d.scratchPreparing=false;d.scratchMode="native";
  if(d.scratchNode){try{d.scratchNode.port.postMessage({cmd:"clear"})}catch(e){}}
@@ -233,7 +234,9 @@ function draw(d){
 async function loadFile(side,file,opts={}){
  const d=decks[side];if(!d){alertMessage("Invalid deck",true);return false}
  if(!supports(file)){alertMessage("Select an MP3, M4A or WAV file from Files.",true);return false}
+ window.deckedStemAI?.onDeckChange?.(side);
  drop(d);
+ d.originalFile=file;d.generatedStems=false;
  d.name=opts.name||titleOf(file);d.loading=true;d.voices=[createVoice(file,d,0)];
  d.scratchFile=file;d.scratchReady=false;
  if(audioCtx){attachVoices(d);prepareScratch(d)}
@@ -243,7 +246,7 @@ async function loadFile(side,file,opts={}){
  alertMessage("Loaded "+d.name+" → "+side.toUpperCase()+". Tap ▶");
  return true;
 }
-async function loadStems(side,files){
+async function loadStems(side,files,opts={}){
  const picked=Array.from(files||[]);
  if(picked.length!==4||picked.some(f=>!supports(f))){
   alertMessage("Select 4 audio stems: vocals, drums, bass and other.",true);return false;
@@ -252,8 +255,15 @@ async function loadStems(side,files){
  for(const name of map){const f=picked.find(f=>f.name.toLowerCase().includes(name));if(f&&!ordered.includes(f))ordered.push(f);}
  for(const f of picked)if(!ordered.includes(f))ordered.push(f);
  const d=decks[side];
- drop(d);d.name=titleOf(ordered[0]).replace(/vocals?/i,"").trim()||"4 stems";
+ if(!opts.ai)window.deckedStemAI?.onDeckChange?.(side);
+ const previousTime=opts.preserveTime?position(d):0;
+ drop(d);d.name=opts.title||titleOf(ordered[0]).replace(/vocals?/i,"").trim()||"4 stems";
+ d.originalFile=opts.originalFile||null;d.generatedStems=!!opts.ai;
  d.loading=true;d.voices=ordered.map((file,i)=>createVoice(file,d,i));
+ if(previousTime>0){
+  const first=d.voices[0];
+  first.addEventListener("loadedmetadata",()=>seek(d,previousTime),{once:true});
+ }
  if(audioCtx)attachVoices(d);
  d.scratchFile=null;d.scratchReady=false;
  d.offsets=[1,1,1,1];d.mute=[false,false,false,false];
@@ -491,8 +501,10 @@ function setup(){
 }
 window.decked={
  loadFile,loadStems,play:toggle,
+ getFile:side=>decks[side]?.originalFile||null,
+ getPosition:side=>decks[side]?position(decks[side]):0,
  isEmpty:side=>!decks[side]?.loaded&&!decks[side]?.loading,
- status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name,fastScratch:!!decks[side].scratchReady,scratchMode:decks[side].scratchMode||'native',scratchSeconds:decks[side].scratchSeconds||0,baseLatencyMs:audioCtx&&Number.isFinite(audioCtx.baseLatency)?Math.round(audioCtx.baseLatency*1000):null}:null,
+ status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name,hasStems:decks[side].voices.length===4,generatedStems:!!decks[side].generatedStems,fastScratch:!!decks[side].scratchReady,scratchMode:decks[side].scratchMode||'native',scratchSeconds:decks[side].scratchSeconds||0,baseLatencyMs:audioCtx&&Number.isFinite(audioCtx.baseLatency)?Math.round(audioCtx.baseLatency*1000):null}:null,
  readFile:supports
 };
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup,{once:true});else setup();

@@ -1,137 +1,194 @@
-/* Pocket Deck saved local music library. No YouTube extraction or external upload. */
+/* DECKED v3 offline library — IndexedDB metadata separate from audio blobs. */
 (function(){
-'use strict';
-const $lib=id=>document.getElementById(id);
-const DBNAME='pocket-deck-local-music',SIZE_LIMIT=300*1024*1024;
-let db=null, tracks=[],working=false;
-const fmt=n=>(Math.max(0,Number(n)||0)/1048576).toFixed(1)+' MB';
-function status(s,bad=false){const el=$lib('lib-message');if(el){el.textContent=s;el.classList.toggle('error',bad)}}
-function openDB(){
- if(db)return Promise.resolve(db);
- return new Promise((ok,fail)=>{
-  if(!window.indexedDB)return fail(new Error('Your browser does not support saved music'));
-  const req=indexedDB.open(DBNAME,1);
-  req.onupgradeneeded=()=>{
-   const db=req.result;
-   if(!db.objectStoreNames.contains('tracks'))db.createObjectStore('tracks',{keyPath:'id'});
+"use strict";
+const $=id=>document.getElementById(id);
+const DB="pocket-deck-local-music",VERSION=2;
+const AUDIO_EXT=/\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|aif|aiff)$/i;
+let instance=null, busy=false, entries=[], noticeTimer=0;
+function tell(message,error=false,silent=false){
+ if(silent)return;
+ const e=$("lib-message");if(!e)return;
+ e.textContent=message;e.classList.toggle("error",Boolean(error));
+ clearTimeout(noticeTimer);
+ if(!error)noticeTimer=setTimeout(()=>{if(e.textContent===message)e.textContent=""},5000);
+}
+function accepted(file){return Boolean(file&&file.size>0&&file.size<=300*1024*1024&&
+  (AUDIO_EXT.test(file.name||"")||(file.type||"").startsWith("audio/")))}
+function open(){
+ if(instance)return Promise.resolve(instance);
+ return new Promise((resolve,reject)=>{
+  if(!window.indexedDB)return reject(new Error("Saved storage is unavailable"));
+  const req=indexedDB.open(DB,VERSION);
+  req.onupgradeneeded=ev=>{
+   const db=req.result,tx=req.transaction;
+   if(!db.objectStoreNames.contains("songs"))db.createObjectStore("songs",{keyPath:"id"});
+   if(!db.objectStoreNames.contains("blobs"))db.createObjectStore("blobs",{keyPath:"id"});
+   // Preserve recordings previously stored by the older Pocket Deck version.
+   if(ev.oldVersion<2&&db.objectStoreNames.contains("tracks")){
+    const legacy=tx.objectStore("tracks"),songs=tx.objectStore("songs"),blobs=tx.objectStore("blobs");
+    legacy.openCursor().onsuccess=e=>{
+     const cur=e.target.result;if(!cur)return;
+     const t=cur.value;
+     if(t&&t.blob&&t.id){
+      songs.put({id:t.id,title:t.title||"Untitled",filename:t.filename||((t.title||"Track")+".mp3"),
+       type:t.blob.type||"audio/mpeg",size:t.size||t.blob.size||0,created:t.created||Date.now(),
+       signature:t.signature||""});
+      blobs.put({id:t.id,blob:t.blob});
+     }
+     cur.continue();
+    };
+   }
   };
-  req.onsuccess=()=>{db=req.result;db.onversionchange=()=>{db.close();db=null};ok(db)};
-  req.onerror=()=>fail(req.error||new Error('Could not open library'));
+  req.onsuccess=()=>{instance=req.result;instance.onversionchange=()=>{instance.close();instance=null};resolve(instance)};
+  req.onerror=()=>reject(req.error||new Error("Could not open saved music"));
+  req.onblocked=()=>tell("Close other open copies of DECKED and retry.",true);
  });
 }
-async function all(){
- const database=await openDB();
- return new Promise((ok,fail)=>{
-  const req=database.transaction('tracks','readonly').objectStore('tracks').getAll();
-  req.onsuccess=()=>ok(req.result||[]);req.onerror=()=>fail(req.error);
+async function list(){
+ const db=await open();
+ return new Promise((resolve,reject)=>{
+  const request=db.transaction("songs","readonly").objectStore("songs").getAll();
+  request.onsuccess=()=>resolve(request.result||[]);
+  request.onerror=()=>reject(request.error||new Error("Library read failed"));
  });
 }
-async function read(id){
- const database=await openDB();
- return new Promise((ok,fail)=>{
-  const req=database.transaction('tracks','readonly').objectStore('tracks').get(id);
-  req.onsuccess=()=>ok(req.result||null);req.onerror=()=>fail(req.error);
+async function getAudio(id){
+ const db=await open();
+ return new Promise((resolve,reject)=>{
+  const request=db.transaction("blobs","readonly").objectStore("blobs").get(id);
+  request.onsuccess=()=>resolve(request.result?.blob||null);
+  request.onerror=()=>reject(request.error||new Error("Audio storage read failed"));
  });
 }
-async function put(item){
- const database=await openDB();
- return new Promise((ok,fail)=>{
-  const tx=database.transaction('tracks','readwrite');
-  tx.objectStore('tracks').put(item);
-  tx.oncomplete=()=>ok();tx.onerror=()=>fail(tx.error||new Error('Storage limit reached'));
-  tx.onabort=()=>fail(tx.error||new Error('Storage limit reached'));
+async function store(meta,blob){
+ const db=await open();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(["songs","blobs"],"readwrite");
+  tx.objectStore("songs").put(meta);
+  tx.objectStore("blobs").put({id:meta.id,blob});
+  tx.oncomplete=()=>resolve(true);
+  tx.onerror=()=>reject(tx.error||new Error("Storage is full"));
+  tx.onabort=()=>reject(tx.error||new Error("Storage rejected this file"));
  });
 }
-async function del(id){
- const database=await openDB();
- return new Promise((ok,fail)=>{
-  const tx=database.transaction('tracks','readwrite');
-  tx.objectStore('tracks').delete(id);
-  tx.oncomplete=()=>ok();tx.onerror=()=>fail(tx.error);
+async function deleteAudio(id){
+ const db=await open();
+ return new Promise((resolve,reject)=>{
+  const tx=db.transaction(["songs","blobs"],"readwrite");
+  tx.objectStore("songs").delete(id);tx.objectStore("blobs").delete(id);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error||new Error("Could not delete song"));
  });
 }
-const id=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
-function isAudio(file){return file&&(file.type?.startsWith('audio/')||/\.(mp3|m4a|aac|wav|flac|oga|ogg|opus|aiff?)$/i.test(file.name||''))}
-function node(tag,cls,value){const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=value;return n}
-function button(value,cls,callback){const e=node('button',cls,value);e.type='button';e.addEventListener('click',callback);return e}
+function nameOf(file){
+ return (file.name||"Untitled").replace(AUDIO_EXT,"").replace(/_/g," ").trim()||"Untitled";
+}
+function uniqueId(){
+ return window.crypto&&crypto.randomUUID?crypto.randomUUID():
+   Date.now().toString(36)+Math.random().toString(36).slice(2);
+}
+function size(bytes){return Math.round(bytes/1048576*10)/10+" MB"}
+function element(tag,cls,value){const e=document.createElement(tag);if(cls)e.className=cls;if(value!==undefined)e.textContent=value;return e}
+function action(label,cls,callback){
+ const b=element("button",cls,label);b.type="button";b.addEventListener("click",callback);return b;
+}
 function render(){
- const counter=$lib('lib-count'),target=$lib('lib-tracks');
- if(!counter||!target)return;
- counter.textContent=tracks.length+' songs · '+fmt(tracks.reduce((a,t)=>a+(t.size||0),0));
+ const count=$("lib-count"),target=$("lib-tracks"),search=$("lib-filter");
+ if(!count||!target)return;
+ count.textContent=entries.length+" TRACK"+(entries.length===1?"":"S");
+ const query=(search?.value||"").trim().toLowerCase();
  target.replaceChildren();
- const query=$lib('lib-filter').value.toLowerCase().trim();
- const shown=tracks.filter(t=>(t.title||'').toLowerCase().includes(query)).sort((a,b)=>b.created-a.created);
- if(!shown.length){target.append(node('p','lib-empty',tracks.length?'No songs match your search.':'Nothing saved yet — import MP3, M4A or WAV files to start.'));return}
- for(const t of shown.slice(0,120)){
-  const row=node('div','lib-item');const info=node('div','lib-info');
-  info.append(node('strong','lib-title',t.title),node('span','lib-detail',fmt(t.size)+' · saved on this device'));
-  const acts=node('div','lib-acts');
-  acts.append(button('A','lib-target a',()=>load(t.id,'a')),button('B','lib-target b',()=>load(t.id,'b')),button('×','lib-delete',()=>remove(t)));
-  row.append(info,acts);target.append(row);
+ const filtered=entries.filter(e=>e.title.toLowerCase().includes(query)).sort((a,b)=>b.created-a.created);
+ if(!filtered.length){
+  target.append(element("div","no-songs",query?"No matches":"No songs yet"));
+  return;
  }
- if(shown.length>120)target.append(node('p','lib-empty','Showing first 120 results. Filter to find other songs.'));
+ for(const item of filtered){
+  const row=element("div","song-row"),info=element("div","song-info");
+  const name=element("strong","song-name",item.title),detail=element("small","song-sub",size(item.size));
+  info.append(name,detail);
+  const controls=element("div","song-actions");
+  controls.append(
+   action("A","song-btn tone-a",()=>load(item.id,"a")),
+   action("B","song-btn tone-b",()=>load(item.id,"b")),
+   action("×","song-btn remove",()=>remove(item))
+  );
+  row.append(info,controls);target.append(row);
+ }
 }
-async function refresh(){tracks=await all();render()}
-async function importFiles(files){
- // Capture the selected FileList before any await or input reset (critical on iOS Safari).
- const chosen=Array.from(files||[]);
- if(working){status('Wait for the current import to finish');return {saved:0,duplicates:0,failed:0}}
- if(!chosen.length){status('No files selected. Choose audio files in Browse → On My iPhone / iCloud Drive.');return {saved:0,duplicates:0,failed:0}}
- working=true;
- status('Checking '+chosen.length+' selected file'+(chosen.length===1?'':'s')+'…');
+async function refresh(){
+ try{entries=await list();render();return entries;}
+ catch(error){tell("Saved music unavailable. You can still load files directly into A or B.",true);return []}
+}
+async function saveFiles(files, options={}){
+ // Never use a live FileList after clearing a file input.
+ const selected=Array.from(files||[]);
+ if(!selected.length)return {saved:0,duplicates:0,failed:0};
+ if(busy){tell("Import already running",true,options.silent);return {saved:0,duplicates:0,failed:0}}
+ busy=true;let saved=0,duplicates=0,failed=0;
  try{
-  await refresh();
-  const existing=new Set(tracks.map(t=>t.signature));
-  let saved=0,dup=0,failed=0;
-  for(const file of chosen){
-   if(!isAudio(file)||!file.size||file.size>SIZE_LIMIT){failed++;continue}
-   const signature=[file.name,file.size,file.lastModified||0].join('/');
-   if(existing.has(signature)){dup++;continue}
-   status('Saving '+file.name+'…');
-   const title=file.name.replace(/\.[^.]+$/,'').slice(0,160);
-   try{await put({id:id(),signature,title,size:file.size,blob:file,created:Date.now()});existing.add(signature);saved++}
-   catch(e){failed++;status('Storage error: '+e.message,true)}
+  const current=await list();
+  const sigs=new Set(current.map(x=>x.signature));
+  for(const file of selected){
+   if(!accepted(file)){failed++;continue}
+   const signature=[file.name,file.size,file.lastModified||0].join("|");
+   if(sigs.has(signature)){duplicates++;continue}
+   const meta={id:uniqueId(),title:nameOf(file),filename:file.name||"audio.mp3",type:file.type||"audio/mpeg",
+    size:file.size,signature,created:Date.now()};
+   try{
+    tell("Saving "+meta.title+"…",false,options.silent);
+    await store(meta,file);sigs.add(signature);saved++;
+   }catch(error){console.error("Audio save failed:",error);failed++;tell("iPhone storage is full or unavailable. You can still play the file directly.",true,options.silent)}
   }
   await refresh();
-  if(saved)status('Saved '+saved+' song'+(saved===1?'':'s')+'. Use A / B to load. '+(failed?failed+' could not be stored.':''));
-  else if(dup&&!failed)status('These tracks are already in the library.');
-  else if(failed)status('Could not save '+failed+' file(s). Select an unprotected MP3, M4A or WAV file (not an Apple Music streaming track), and check free iPhone storage.',true);
-  else status('Select some audio files to import.');
-  return {saved,duplicates:dup,failed};
- }catch(e){status('Library import failed: '+e.message,true);throw e}
- finally{working=false}
+  if(!options.silent)tell(saved?saved+" track"+(saved===1?"":"s")+" added":duplicates?"Already in your library":failed?"Could not save this file":"Choose a supported audio file",Boolean(failed&&!saved));
+  return {saved,duplicates,failed};
+ }catch(error){
+  tell("Can't save music on this device. Direct loading still works.",true,options.silent);
+  return {saved,duplicates,failed:failed+1};
+ }finally{busy=false}
 }
-async function load(trackId,side){
+async function load(id,side){
+ const entry=entries.find(x=>x.id===id);
+ if(!entry){tell("Track no longer in library.",true);return false}
+ tell("Loading "+entry.title+"…");
  try{
-  status('Loading saved track into Deck '+side.toUpperCase()+'…');
-  const track=await read(trackId);
-  if(!track||!track.blob)throw new Error('Saved audio was not found');
-  if(typeof importTrack!=='function'||typeof deck==='undefined')throw new Error('DJ engine is not ready');
-  const file=new File([track.blob],track.title+'.'+(track.blob.type?.includes('wav')?'wav':track.blob.type?.includes('mp4')?'m4a':'mp3'),{type:track.blob.type||'audio/mpeg'});
-  await importTrack(deck[side],file);
-  status('Sent '+track.title+' to Deck '+side.toUpperCase()+'. Press ▶ to play.');
-  const section=$lib('music-library');
-  if(section)section.open=false;
- }catch(e){status('Could not load track: '+e.message,true)}
+  const blob=await getAudio(id);
+  if(!blob||!blob.size)throw new Error("Saved audio missing");
+  const file=new File([blob],entry.filename||"track.mp3",{type:entry.type||blob.type||"audio/mpeg"});
+  const ok=await window.decked.loadFile(side,file,{name:entry.title});
+  if(!ok){tell("This track could not be loaded.",true);return false}
+  tell(entry.title+" → "+side.toUpperCase());
+  $("music-library").open=false;
+  return true;
+ }catch(error){
+  console.error("Saved track load failed",error);
+  tell("Could not open saved song. Try importing the original file.",true);
+  return false;
+ }
 }
-async function remove(t){
- if(!window.confirm('Remove "'+t.title+'" from this device’s music library?'))return;
- try{await del(t.id);await refresh();status('Removed '+t.title+' from the library.')}catch(e){status('Remove failed: '+e.message,true)}
+async function remove(item){
+ if(!confirm("Delete "+item.title+" from this device?"))return;
+ try{await deleteAudio(item.id);await refresh();tell("Removed")}catch(error){tell("Could not remove track.",true)}
 }
-async function init(){
- if(!$lib('lib-tracks'))return;
- // The native file input sits directly over the styled label. No programmatic .click().
- // Snapshot before clearing the picker: a live FileList can become empty on Safari.
- $lib('lib-files').addEventListener('change',e=>{
-  const selected=Array.from(e.currentTarget.files||[]);
-  e.currentTarget.value='';
-  if(!selected.length){status('No audio selected. In Files choose Browse → Downloads or On My iPhone.');return}
-  importFiles(selected).catch(err=>status('Import failed: '+(err.message||String(err)),true));
+function init(){
+ const input=$("lib-files");
+ if(!input)return;
+ input.addEventListener("change",()=>{
+  const chosen=Array.from(input.files||[]);
+  input.value="";
+  if(!chosen.length){tell("No files chosen");return}
+  const first=chosen.find(accepted);
+  if(first&&window.decked){
+   const target=window.decked.isEmpty("a")?"a":window.decked.isEmpty("b")?"b":null;
+   if(target)window.decked.loadFile(target,first);
+  }
+  saveFiles(chosen).catch(error=>tell("Import failed: "+error.message,true));
  });
- $lib('lib-filter').addEventListener('input',render);
- try{await refresh();status('Saved locally on this iPhone. Keep an original backup in Files — browser storage can be cleared.')}
- catch(e){status('Music library unavailable: '+e.message,true)}
+ $("lib-filter").addEventListener("input",render);
+ refresh();
 }
-window.pocketDeckLibrary=Object.freeze({importFiles,refresh,load});
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+window.deckedLibrary=Object.freeze({saveFiles,load,refresh});
+window.pocketDeckLibrary=Object.freeze({importFiles:saveFiles,refresh,load});
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();

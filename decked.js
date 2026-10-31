@@ -378,7 +378,7 @@ function setup(){
 }
 window.decked={
  loadFile,loadStems,play:toggle,
- isEmpty:side=>!decks[side]?.loaded,
+ isEmpty:side=>!decks[side]?.loaded&&!decks[side]?.loading,
  status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name}:null,
  readFile:supports
 };

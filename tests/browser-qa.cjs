@@ -110,6 +110,41 @@ async function runProject(type,device,url){
   await page.mouse.up();
   assert.ok(!await page.evaluate(()=>document.documentElement.classList.contains('scratch-locked')),'Scroll lock stuck');
  });
+ await test('low-latency scratch and backward motion',async()=>{
+  const capable=await page.evaluate(()=>Boolean(window.AudioWorkletNode && window.AudioContext && isSecureContext));
+  if(!capable){
+   console.log('INFO '+prefix+' AudioWorklet unavailable; standard scrub fallback tested');
+   return;
+  }
+  await until(page,'window.decked.status("a").fastScratch===true',18000);
+  const first=await page.evaluate(()=>window.decked.status("a"));
+  console.log('AUDIO_DIAGNOSTIC '+prefix+' '+JSON.stringify({
+   scratchReady:first.fastScratch,baseLatencyMs:first.baseLatencyMs
+  }));
+  assert.ok(first.fastScratch,'PCM worklet was not prepared');
+  await page.locator('#cue-a').click();
+  const r=await page.locator('#disk-a').boundingBox();
+  const center={x:r.x+r.width/2,y:r.y+r.height/2},radius=r.width*.32;
+  const point=degree=>{
+   const angle=degree*Math.PI/180;
+   return {x:center.x+Math.cos(angle)*radius,y:center.y+Math.sin(angle)*radius};
+  };
+  const p0=point(-40),p1=point(35),p2=point(-15);
+  await page.mouse.move(p0.x,p0.y);
+  await page.mouse.down();
+  assert.equal((await page.evaluate(()=>window.decked.status("a"))).scratchMode,'pcm','Fast PCM mode did not activate');
+  await page.mouse.move(p1.x,p1.y,{steps:6});
+  await page.waitForTimeout(45);
+  const forward=(await page.evaluate(()=>window.decked.status("a"))).scratchSeconds;
+  assert.ok(forward>0.01,'Forward vinyl drag did not advance PCM position: '+forward);
+  await page.mouse.move(p2.x,p2.y,{steps:6});
+  await page.waitForTimeout(45);
+  const backward=(await page.evaluate(()=>window.decked.status("a"))).scratchSeconds;
+  assert.ok(backward<forward,'Backward vinyl drag did not reverse PCM position: '+backward+' vs '+forward);
+  await page.mouse.up();
+  await until(page,'window.decked.status("a").scratchMode==="native"');
+  assert.ok(!await page.evaluate(()=>document.documentElement.classList.contains("scratch-locked")));
+ });
  await test('load Deck B and move crossfader',async()=>{
   await page.locator('#file-b').setInputFiles(file('two.wav',350));
   await until(page,'window.decked.status("b").loaded===true');

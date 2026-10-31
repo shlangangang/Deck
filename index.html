@@ -46,7 +46,7 @@ main{max-width:880px;margin:auto;padding:0 13px 70px}
 .track-status{font-size:9px;letter-spacing:.14em;font-weight:800;color:#7c8c90;height:16px}
 .track-status.is-playing{color:#c9e9aa}
 .platter-area{display:flex;justify-content:center;padding:11px 0 9px}
-.platter{width:min(100%,225px);aspect-ratio:1;border-radius:50%;padding:5px;background:linear-gradient(145deg,#728184,#192326 28%,#1a2327 70%,#58666b);box-shadow:0 16px 25px #0008,0 0 0 1px #445055aa;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow:hidden;cursor:grab}
+.platter{position:relative;width:min(100%,225px);aspect-ratio:1;border-radius:50%;padding:5px;background:linear-gradient(145deg,#728184,#192326 28%,#1a2327 70%,#58666b);box-shadow:0 16px 25px #0008,0 0 0 1px #445055aa;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow:hidden;cursor:grab}
 .platter.scratching{cursor:grabbing;outline:2px solid #bfe8a8;outline-offset:3px}
 .platter .record-face{height:100%;width:100%;border-radius:50%;display:grid;place-items:center;position:relative;pointer-events:none;background:radial-gradient(circle at center,#0b1113 0 23%,transparent 23.3%),repeating-radial-gradient(circle at center,#151a1d 0 1px,#1e2528 1.6px 2.5px,#090e10 3.5px 5px);box-shadow:inset 0 0 26px #000d}
 .platter .record-face:before{content:"";position:absolute;inset:13px;border-radius:50%;border:1px solid #3645486b}
@@ -58,6 +58,10 @@ main{max-width:880px;margin:auto;padding:0 13px 70px}
 .record-label strong{font-size:clamp(20px,6vw,33px);font-weight:950;line-height:1;color:#1d2b25;letter-spacing:-.08em}
 .record-label .record-type{font-size:clamp(4px,1vw,7px);letter-spacing:.1em;font-weight:900;color:#304e39}
 .record-label i{position:absolute;left:50%;top:50%;width:5px;height:5px;background:#13201a;border-radius:50%;transform:translate(-50%,-50%)}
+.disk-picker{display:none;position:absolute;z-index:5;inset:0;border-radius:50%;overflow:hidden;align-items:center;justify-content:center;cursor:pointer}
+.platter.is-empty .disk-picker{display:flex}
+.disk-picker>span{width:54px;height:54px;display:grid;place-items:center;border:2px solid #263d2f;border-radius:50%;background:#bfe1b5;color:#162b19;font-size:40px;font-weight:350;padding-bottom:5px;pointer-events:none;box-shadow:0 4px 15px #0009}
+.disk-picker input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:120px;cursor:pointer;touch-action:manipulation}
 @keyframes spin{to{transform:rotate(360deg)}}
 .seek{display:block;width:100%;appearance:none;-webkit-appearance:none;height:3px;border-radius:8px;background:linear-gradient(to right,#d5eea2 0 var(--progress,0%),#445155 var(--progress,0%) 100%);outline:none;margin:5px 0 8px;touch-action:pan-x}
 .seek::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:#dce9d4;border:2px solid #9caf9e}
@@ -194,7 +198,7 @@ main{padding:0 8px 45px}
       <div class="record-face">
         <div class="record-highlight"></div><div class="record-label"><span class="record-type">DECKED</span><strong>A</strong><i></i></div>
       </div>
-    </div>
+    <label class="disk-picker"><span>＋</span><input id="disk-file-a" type="file" aria-label="Choose track for deck A"/></label></div>
   </div>
   <input id="seek-a" class="seek" type="range" min="0" max="100" value="0" aria-label="Track position deck A" />
   <div class="timing" id="time-a">00:00 / 00:00</div>
@@ -237,7 +241,7 @@ main{padding:0 8px 45px}
       <div class="record-face">
         <div class="record-highlight"></div><div class="record-label"><span class="record-type">DECKED</span><strong>B</strong><i></i></div>
       </div>
-    </div>
+    <label class="disk-picker"><span>＋</span><input id="disk-file-b" type="file" aria-label="Choose track for deck B"/></label></div>
   </div>
   <input id="seek-b" class="seek" type="range" min="0" max="100" value="0" aria-label="Track position deck B" />
   <div class="timing" id="time-b">00:00 / 00:00</div>

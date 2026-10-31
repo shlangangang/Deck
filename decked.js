@@ -261,8 +261,15 @@ async function loadStems(side,files,opts={}){
  d.originalFile=opts.originalFile||null;d.generatedStems=!!opts.ai;
  d.loading=true;d.voices=ordered.map((file,i)=>createVoice(file,d,i));
  if(previousTime>0){
-  const first=d.voices[0];
-  first.addEventListener("loadedmetadata",()=>seek(d,previousTime),{once:true});
+  // Each stem gains metadata at a different time on Safari; seek separately
+  // so four independent media elements remain aligned after AI conversion.
+  for(const voice of d.voices){
+   const setStart=()=>{
+    try{voice.currentTime=Math.min(previousTime,Math.max(0,(voice.duration||previousTime)-.02))}catch(error){}
+   };
+   if(voice.readyState>=1)setStart();
+   else voice.addEventListener("loadedmetadata",setStart,{once:true});
+  }
  }
  if(audioCtx)attachVoices(d);
  d.scratchFile=null;d.scratchReady=false;

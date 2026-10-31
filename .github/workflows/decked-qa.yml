@@ -1,0 +1,10 @@
+name: DECKED Browser QA
+on:
+  workflow_dispatch:
+
+jobs:
+  browser-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo QA bootstrapped

@@ -167,7 +167,7 @@ async function load(id,side){
  tell("Loading "+entry.title+"…");
  try{
   const blob=await getAudio(id);
-  if(!blob||!blob.size)throw new Error("Saved audio missing");
+  if(!blob||!(blob.size||blob.byteLength))throw new Error("Saved audio missing");
   const file=new File([blob],entry.filename||"track.mp3",{type:entry.type||blob.type||"audio/mpeg"});
   const ok=await window.decked.loadFile(side,file,{name:entry.title});
   if(!ok){tell("This track could not be loaded.",true);return false}

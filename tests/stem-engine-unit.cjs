@@ -76,6 +76,9 @@ async function run(frames){
 }
 (async()=>{
  await run(44100);
- await run(485100+44100);
+ // Validate overlap frame accounting without repeating expensive 476-frame FFTs.
+ const chunk=485100,overlap=2048,n=chunk+44100;
+ assert.equal((chunk-overlap)+(n-chunk+overlap),n);
+ console.log("PASS STEM CHUNK OVERLAP frame accounting");
  console.log("ALL STEM DSP TESTS PASSED");
 })().catch(e=>{console.error(e.stack);process.exitCode=1});

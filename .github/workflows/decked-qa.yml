@@ -8,6 +8,9 @@ on:
       - decked.js
       - library.js
       - ytpmp3.js
+      - stem-ai.js
+      - stem-worker.js
+      - tests/stem-engine-unit.cjs
       - sw.js
       - tests/browser-qa.cjs
       - .github/workflows/decked-qa.yml
@@ -33,6 +36,8 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium webkit
+      - name: Verify SCNet STFT, inverse FFT and stem reconstruction
+        run: node tests/stem-engine-unit.cjs
       - name: Run touch and Safari-like playtests
         run: node tests/browser-qa.cjs
       - name: Save screenshots and diagnostics

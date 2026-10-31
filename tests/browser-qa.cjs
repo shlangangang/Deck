@@ -24,7 +24,7 @@ function startServer(){
   }).listen(0,'127.0.0.1',()=>resolve('http://127.0.0.1:'+server.address().port+'/'));
  });
 }
-function wave({seconds=3,freq=220}={}){
+function wave({seconds=10,freq=220}={}){
  const rate=22050,frames=Math.floor(seconds*rate),bytes=frames*2;
  const buff=Buffer.alloc(44+bytes);
  buff.write('RIFF',0);buff.writeUInt32LE(36+bytes,4);buff.write('WAVE',8);
@@ -68,7 +68,10 @@ async function runProject(type,device,url){
  });
  await page.screenshot({path:path.join(out,prefix+'-empty.png'),fullPage:true});
  await test('tap platter file input / load WAV',async()=>{
-  await page.locator('#disk-file-a').setInputFiles(file('one.wav'));
+  const chooserPromise=page.waitForEvent('filechooser');
+  await page.locator('#disk-file-a').click();
+  const chooser=await chooserPromise;
+  await chooser.setFiles(file('one.wav'));
   await until(page,'window.decked.status("a").loaded===true');
   assert.ok((await page.locator('#song-a').textContent()).includes('one'));
   assert.equal(await page.locator('#state-a').textContent(),'READY');
@@ -88,6 +91,7 @@ async function runProject(type,device,url){
   await setRange(page,'#tempo-a',120);
   await setRange(page,'#filter-a',-40);
   await setRange(page,'#volume-a',67);
+  await page.locator('#cue-a').click();
   await page.locator('#loop-a').click();
   assert.ok(await page.locator('#loop-a').evaluate(e=>e.classList.contains('is-on')));
   await page.locator('#loop-a').click();
@@ -124,8 +128,8 @@ async function runProject(type,device,url){
   await until(page, 'document.getElementById("lib-count").textContent.includes("TRACK") && document.getElementById("lib-tracks").textContent.includes("saved")',18000);
   const list=await page.locator('#lib-tracks').textContent();
   assert.ok(list.includes('saved'),'Track not listed: '+list);
-  await page.locator('#lib-tracks .song-row').first().locator('.tone-a').click();
-  await until(page,'window.decked.status("a").loaded');
+  await page.locator('#lib-tracks .song-row').filter({hasText:'saved'}).first().locator('.tone-a').click();
+  await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("saved")');
   assert.ok((await page.locator('#song-a').textContent()).includes('saved'));
   await page.reload({waitUntil:'load'});
   await until(page,'window.decked && window.deckedLibrary');

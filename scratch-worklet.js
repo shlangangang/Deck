@@ -22,6 +22,15 @@ class DeckedScratchProcessor extends AudioWorkletProcessor{
     this.active=true;
    }else if(data.cmd==='speed'){
     this.targetSpeed=Math.max(-4,Math.min(4,data.speed||0));
+   }else if(data.cmd==='seek'){
+    // PCM positioning is cheap; tracking finger position directly avoids reversal lag.
+    if(this.length>2&&Number.isFinite(data.position)){
+     this.position=Math.max(0,Math.min(this.length-2,data.position));
+    }
+    if(Number.isFinite(data.speed)){
+     this.targetSpeed=Math.max(-4,Math.min(4,data.speed));
+     this.speed=this.targetSpeed;
+    }
    }else if(data.cmd==='stop'){
     this.active=false;this.targetSpeed=0;
     this.port.postMessage({cmd:'stopped',position:this.position});

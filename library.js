@@ -73,13 +73,17 @@ function render(){
 }
 async function refresh(){tracks=await all();render()}
 async function importFiles(files){
- if(working)return status('Wait for the current import to finish');
+ // Capture the selected FileList before any await or input reset (critical on iOS Safari).
+ const chosen=Array.from(files||[]);
+ if(working){status('Wait for the current import to finish');return {saved:0,duplicates:0,failed:0}}
+ if(!chosen.length){status('No files selected. Choose audio files in Browse → On My iPhone / iCloud Drive.');return {saved:0,duplicates:0,failed:0}}
  working=true;
+ status('Checking '+chosen.length+' selected file'+(chosen.length===1?'':'s')+'…');
  try{
   await refresh();
   const existing=new Set(tracks.map(t=>t.signature));
   let saved=0,dup=0,failed=0;
-  for(const file of Array.from(files||[])){
+  for(const file of chosen){
    if(!isAudio(file)||!file.size||file.size>SIZE_LIMIT){failed++;continue}
    const signature=[file.name,file.size,file.lastModified||0].join('/');
    if(existing.has(signature)){dup++;continue}
@@ -91,7 +95,7 @@ async function importFiles(files){
   await refresh();
   if(saved)status('Saved '+saved+' song'+(saved===1?'':'s')+'. Use A / B to load. '+(failed?failed+' could not be stored.':''));
   else if(dup&&!failed)status('These tracks are already in the library.');
-  else if(failed)status('Could not save '+failed+' file(s). Use audio files and check available device storage.',true);
+  else if(failed)status('Could not save '+failed+' file(s). Select an unprotected MP3, M4A or WAV file (not an Apple Music streaming track), and check free iPhone storage.',true);
   else status('Select some audio files to import.');
   return {saved,duplicates:dup,failed};
  }catch(e){status('Library import failed: '+e.message,true);throw e}
@@ -116,8 +120,14 @@ async function remove(t){
 }
 async function init(){
  if(!$lib('lib-tracks'))return;
- $lib('lib-import-btn').addEventListener('click',()=>$lib('lib-files').click());
- $lib('lib-files').addEventListener('change',e=>{const files=e.target.files;importFiles(files);e.target.value=''});
+ // The native file input sits directly over the styled label. No programmatic .click().
+ // Snapshot before clearing the picker: a live FileList can become empty on Safari.
+ $lib('lib-files').addEventListener('change',e=>{
+  const selected=Array.from(e.currentTarget.files||[]);
+  e.currentTarget.value='';
+  if(!selected.length){status('No audio selected. In Files choose Browse → Downloads or On My iPhone.');return}
+  importFiles(selected).catch(err=>status('Import failed: '+(err.message||String(err)),true));
+ });
  $lib('lib-filter').addEventListener('input',render);
  try{await refresh();status('Saved locally on this iPhone. Keep an original backup in Files — browser storage can be cleared.')}
  catch(e){status('Music library unavailable: '+e.message,true)}

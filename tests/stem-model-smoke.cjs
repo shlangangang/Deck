@@ -1,7 +1,7 @@
 /* One true SCNet model smoke test. Calls Hugging Face and ONNX runtime from a real browser.
    Not run for each regular app push; only for changes to this test/workflow or manual dispatch. */
 "use strict";
-const {chromium}=require("playwright");
+const {chromium,webkit}=require("playwright");
 const http=require("node:http"),fs=require("node:fs"),path=require("node:path"),assert=require("node:assert/strict");
 const root=path.resolve(__dirname,"..");
 let srv;
@@ -32,30 +32,38 @@ function makeWav(seconds=1.2){
 }
 (async()=>{
  const url=await serve();
- const browser=await chromium.launch({headless:true,args:["--autoplay-policy=no-user-gesture-required"]});
- const page=await browser.newPage({acceptDownloads:true,viewport:{width:390,height:844},hasTouch:true,isMobile:true});
- page.on("pageerror",error=>console.error("PAGE ERROR",error.message));
- page.on("console",msg=>{if(msg.type()==="error")console.warn("BROWSER ERROR",msg.text())});
  try{
-  await page.goto(url,{waitUntil:"load"});
-  await page.locator("#file-a").setInputFiles({name:"stem-smoke.wav",mimeType:"audio/wav",buffer:makeWav()});
-  await page.waitForFunction('window.decked.status("a").loaded===true');
-  console.log("SCNET_TEST_START real model from Hugging Face, audio remains local");
-  const start=Date.now();
-  await page.locator("#ai-a").click();
-  await page.waitForFunction(()=>{
-   const status=document.getElementById("ai-label-a");
-   return window.decked.status("a").hasStems||status.classList.contains("error");
-  },null,{timeout:230000,polling:700});
-  const state=await page.evaluate(()=>({stemmed:window.decked.status("a").hasStems,
-   text:document.getElementById("ai-label-a").textContent,
-   track:document.getElementById("song-a").textContent}));
-  console.log("SCNET_TEST_STATE",JSON.stringify(state));
-  assert.ok(state.stemmed,"Real AI inference failed: "+state.text);
-  await page.locator("#play-a").click();
-  await page.waitForFunction('window.decked.status("a").playing',null,{timeout:15000});
-  await page.locator("#mute-a-0").click();
-  assert.ok(await page.locator("#mute-a-0").evaluate(el=>el.classList.contains("is-muted")));
-  console.log("REAL_SCNET_SMOKE_PASS elapsed="+((Date.now()-start)/1000).toFixed(1)+"s");
- }finally{await browser.close();srv.close()}
+  for(const engine of [chromium,webkit]){
+   const browser=await engine.launch({headless:true,args:engine.name()==="chromium"?["--autoplay-policy=no-user-gesture-required"]:[]});
+   const page=await browser.newPage({acceptDownloads:true,viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+   page.on("pageerror",error=>console.error("PAGE ERROR",error.message));
+   page.on("console",msg=>{if(msg.type()==="error")console.warn("BROWSER ERROR",msg.text())});
+   try{
+    await page.goto(url,{waitUntil:"load"});
+    await page.locator("#file-a").setInputFiles({name:"stem-smoke.wav",mimeType:"audio/wav",buffer:makeWav()});
+    await page.waitForFunction('window.decked.status("a").loaded===true');
+    const name=engine.name();
+    console.log("SCNET_TEST_START "+name+" real SCNet model download and inference");
+    const start=Date.now();
+    await page.locator("#ai-a").click();
+    await page.waitForFunction(()=>{
+     const status=document.getElementById("ai-label-a");
+     return window.decked.status("a").hasStems||status.classList.contains("error");
+    },null,{timeout:230000,polling:700});
+    const state=await page.evaluate(()=>({stemmed:window.decked.status("a").hasStems,
+     text:document.getElementById("ai-label-a").textContent,
+     track:document.getElementById("song-a").textContent}));
+    console.log("SCNET_TEST_STATE "+name+" "+JSON.stringify(state));
+    assert.ok(state.stemmed,"Real AI inference failed: "+state.text);
+    const waves=await page.evaluate(()=>window.deckedStemAI.getGenerated("a")?.map(f=>({name:f.name,size:f.size})));
+    assert.equal(waves?.length,4);
+    for(const w of waves)assert.ok(w.size>44100*4,"Empty generated WAV: "+w.name);
+    await page.locator("#play-a").click();
+    await page.waitForFunction('window.decked.status("a").playing',null,{timeout:15000});
+    await page.locator("#mute-a-0").click();
+    assert.ok(await page.locator("#mute-a-0").evaluate(el=>el.classList.contains("is-muted")));
+    console.log("REAL_SCNET_SMOKE_PASS "+name+" elapsed="+((Date.now()-start)/1000).toFixed(1)+"s");
+   }finally{await browser.close()}
+  }
+ }finally{srv.close()}
 })().catch(e=>{console.error("REAL_SCNET_SMOKE_FAIL",e.stack);process.exitCode=1});

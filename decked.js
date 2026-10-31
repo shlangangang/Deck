@@ -350,12 +350,8 @@ function setup(){
    alertMessage("Tempo synced to "+other.id.toUpperCase());
   });
   const assignTrack=files=>{
-   const file=files[0];
-   loadFile(d.id,file).then(ok=>{
-    if(ok&&window.deckedLibrary?.saveFiles){
-     window.deckedLibrary.saveFiles([file],{silent:true}).catch(()=>{});
-    }
-   });
+   // Loading a deck must never wait on Safari storage. Save only via LIBRARY + MUSIC.
+   loadFile(d.id,files[0]);
   };
   fileInput("file-"+d.id,assignTrack);
   fileInput("disk-file-"+d.id,assignTrack);
@@ -363,8 +359,8 @@ function setup(){
   draw(d);
  }
  fileInput("quick-file",files=>{
-  const file=files[0],side=!decks.a.loaded?"a":!decks.b.loaded?"b":"a";
-  loadFile(side,file).then(ok=>{if(ok&&window.deckedLibrary?.saveFiles)window.deckedLibrary.saveFiles([file],{silent:true}).catch(()=>{})});
+  const file=files[0],side=!decks.a.loaded&&!decks.a.loading?"a":!decks.b.loaded&&!decks.b.loading?"b":"a";
+  loadFile(side,file);
  });
  $("cross").addEventListener("input",e=>{crossValue=Number(e.target.value)/100;applyMix()});
  $("open-library").addEventListener("click",()=>{

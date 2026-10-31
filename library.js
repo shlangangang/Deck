@@ -93,7 +93,8 @@ async function importFiles(files){
   else if(dup&&!failed)status('These tracks are already in the library.');
   else if(failed)status('Could not save '+failed+' file(s). Use audio files and check available device storage.',true);
   else status('Select some audio files to import.');
- }catch(e){status('Library import failed: '+e.message,true)}
+  return {saved,duplicates:dup,failed};
+ }catch(e){status('Library import failed: '+e.message,true);throw e}
  finally{working=false}
 }
 async function load(trackId,side){

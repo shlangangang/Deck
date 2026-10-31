@@ -136,7 +136,7 @@ async function runProject(type,device,url){
   await until(page,'document.getElementById("lib-tracks").textContent.includes("saved")',16000);
  });
  await test('reload saved audio and library search',async()=>{
-  await page.locator('#music-library summary').click();
+  if(!await page.locator('#music-library').evaluate(el=>el.open))await page.locator('#music-library summary').click();
   await page.locator('#lib-filter').fill('saved');
   await until(page,'document.getElementById("lib-tracks").textContent.includes("saved")');
   const rows=await page.locator('#lib-tracks .song-row').count();

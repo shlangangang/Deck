@@ -1,8 +1,8 @@
 /* DECKED v3 offline shell — network-first code updates, offline library remains in IndexedDB. */
-const CACHE='decked-shell-v3.0.0';
+const CACHE='decked-shell-v3.0.1';
 const ASSETS=[
- './','./index.html','./decked.js?v=3.0.0','./library.js?v=3.0.0',
- './ytpmp3.js?v=3.0.0','./manifest.webmanifest','./icon.svg'
+ './','./index.html','./decked.js?v=3.0.1','./library.js?v=3.0.1',
+ './ytpmp3.js?v=3.0.1','./manifest.webmanifest','./icon.svg'
 ];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

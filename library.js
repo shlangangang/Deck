@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const DB="pocket-deck-local-music",VERSION=2;
 const AUDIO_EXT=/\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|aif|aiff)$/i;
-let instance=null, busy=false, entries=[], noticeTimer=0;
+let instance=null, importQueue=Promise.resolve(), entries=[], noticeTimer=0;
 function tell(message,error=false,silent=false){
  if(silent)return;
  const e=$("lib-message");if(!e)return;
@@ -120,12 +120,8 @@ async function refresh(){
  try{entries=await list();render();return entries;}
  catch(error){tell("Saved music unavailable. You can still load files directly into A or B.",true);return []}
 }
-async function saveFiles(files, options={}){
- // Never use a live FileList after clearing a file input.
- const selected=Array.from(files||[]);
- if(!selected.length)return {saved:0,duplicates:0,failed:0};
- if(busy){tell("Import already running",true,options.silent);return {saved:0,duplicates:0,failed:0}}
- busy=true;let saved=0,duplicates=0,failed=0;
+async function saveSelected(selected, options={}){
+ let saved=0,duplicates=0,failed=0;
  try{
   const current=await list();
   const sigs=new Set(current.map(x=>x.signature));
@@ -137,7 +133,16 @@ async function saveFiles(files, options={}){
     size:file.size,signature,created:Date.now()};
    try{
     tell("Saving "+meta.title+"…",false,options.silent);
-    await store(meta,file);sigs.add(signature);saved++;
+    const blob=file.slice(0,file.size,file.type||"application/octet-stream");
+    try{await store(meta,blob)}
+    catch(blobError){
+     // Some WebKit storage implementations reject Blob cloning. Small files can
+     // safely use a structured-cloneable Uint8Array instead.
+     if(file.size>24*1024*1024)throw blobError;
+     const bytes=new Uint8Array(await file.arrayBuffer());
+     await store(meta,bytes);
+    }
+    sigs.add(signature);saved++;
    }catch(error){console.error("Audio save failed:",error);failed++;tell("iPhone storage is full or unavailable. You can still play the file directly.",true,options.silent)}
   }
   await refresh();
@@ -146,7 +151,15 @@ async function saveFiles(files, options={}){
  }catch(error){
   tell("Can't save music on this device. Direct loading still works.",true,options.silent);
   return {saved,duplicates,failed:failed+1};
- }finally{busy=false}
+ }
+}
+function saveFiles(files, options={}){
+ // Snapshot synchronously; jobs queue instead of being discarded on slow Safari storage.
+ const selected=Array.from(files||[]);
+ if(!selected.length)return Promise.resolve({saved:0,duplicates:0,failed:0});
+ const next=importQueue.then(()=>saveSelected(selected,options));
+ importQueue=next.catch(()=>{});
+ return next;
 }
 async function load(id,side){
  const entry=entries.find(x=>x.id===id);

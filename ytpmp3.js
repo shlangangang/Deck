@@ -73,8 +73,10 @@ async function run(){
   }
   const title=String(payload?.title||'YouTube audio '+videoId).replace(/[\u0000-\u001f\\/<>:"|?*]/g,' ').trim().slice(0,110)||'Converted Audio';
   const file=new File([media],title+'.mp3',{type:'audio/mpeg',lastModified:Date.now()});
-  await window.pocketDeckLibrary.importFiles([file]);
-  text('Downloaded MP3 handed to SAVED MUSIC LIBRARY. Find it there and tap A or B to load it.');
+  const result=await window.pocketDeckLibrary.importFiles([file]);
+  if(!result||result.saved!==1)throw new Error('The MP3 was received, but your iPhone could not store it. Check free storage and Safari website data settings.');
+  text('MP3 saved to your library. Tap A or B next to the track to load and scratch it.');
+  document.getElementById('music-library').open=true;
  }catch(e){
   if(e.name==='AbortError')text('ytpmp3 request timed out. Try again later or use its website manually.',true);
   else if(e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(e.message||'')){

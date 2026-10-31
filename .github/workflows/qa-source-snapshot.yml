@@ -1,0 +1,26 @@
+name: DECKED QA source snapshot
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/qa-source-snapshot.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package current website and tests
+        run: |
+          mkdir -p snapshot/tests
+          cp index.html decked.js library.js ytpmp3.js sw.js manifest.webmanifest icon.svg snapshot/
+          cp tests/browser-qa.cjs snapshot/tests/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decked-qa-source
+          path: snapshot/
+          retention-days: 1

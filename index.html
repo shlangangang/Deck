@@ -169,6 +169,16 @@ main{padding:0 8px 45px}
 }
 @media(min-width:700px){.platter{max-width:225px}.adjust{gap:12px}.deck-panel{padding:20px 23px 17px}.track-title{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.platter.is-playing .record-face{animation:none}.toast{transition:none}}
+
+/* AI stems – quiet background processing with a single clear action */
+.ai-controls{margin-top:12px;display:flex;align-items:center;gap:8px;min-width:0}
+.ai-split{min-width:89px;height:36px;border-radius:9px;border:1px solid #749478;background:linear-gradient(120deg,#b6dfaa,#dce6b9);color:#18281b;font-weight:950;font-size:10px;letter-spacing:.02em;white-space:nowrap;touch-action:manipulation}
+.ai-split.is-working{background:#2d3d39;color:#cbedd0;border-color:#76977f}
+.ai-label{font-size:8px;letter-spacing:.02em;color:#95a9a1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}
+.ai-label.error{color:#ffb4a9;white-space:normal;font-size:9px}
+.ai-track{height:3px;margin:7px 0 1px;border-radius:3px;background:#27312e;overflow:hidden}
+.ai-track span{display:block;width:0;height:100%;background:#badaac;transition:width .2s ease}
+@media(max-width:560px){.ai-controls{margin-top:10px;gap:4px}.ai-split{min-width:80px;height:35px;font-size:9px}.ai-label{font-size:7px}.ai-track{margin-top:5px}}
 </style>
 </head>
 <body>
@@ -217,6 +227,11 @@ main{padding:0 8px 45px}
     <button id="sync-a" class="tool-button" type="button">SYNC</button>
     <button id="setcue-a" class="tool-button" type="button">SET CUE</button>
   </div>
+  <div class="ai-controls" aria-label="AI stem separation">
+    <button id="ai-a" class="ai-split" type="button" title="Generate 4 real stems locally using a free neural model">✦ AI SPLIT</button>
+    <span id="ai-label-a" class="ai-label">VOCALS · DRUMS · BASS · OTHER</span>
+  </div>
+  <div class="ai-track" aria-hidden="true"><span id="ai-bar-a"></span></div>
   <div class="stem-tools">
     <button id="stems-a" class="stem-switch" type="button">STEMS <span class="chevron">⌄</span></button>
     <label class="stem-picker">＋ 4 FILES<input id="stems-file-a" type="file" multiple aria-label="Choose 4 stems for deck A" /></label>
@@ -260,6 +275,11 @@ main{padding:0 8px 45px}
     <button id="sync-b" class="tool-button" type="button">SYNC</button>
     <button id="setcue-b" class="tool-button" type="button">SET CUE</button>
   </div>
+  <div class="ai-controls" aria-label="AI stem separation">
+    <button id="ai-b" class="ai-split" type="button" title="Generate 4 real stems locally using a free neural model">✦ AI SPLIT</button>
+    <span id="ai-label-b" class="ai-label">VOCALS · DRUMS · BASS · OTHER</span>
+  </div>
+  <div class="ai-track" aria-hidden="true"><span id="ai-bar-b"></span></div>
   <div class="stem-tools">
     <button id="stems-b" class="stem-switch" type="button">STEMS <span class="chevron">⌄</span></button>
     <label class="stem-picker">＋ 4 FILES<input id="stems-file-b" type="file" multiple aria-label="Choose 4 stems for deck B" /></label>
@@ -310,6 +330,7 @@ main{padding:0 8px 45px}
 <script src="./decked.js?v=3.1.1" defer></script>
 <script src="./library.js?v=3.0.4" defer></script>
 <script src="./ytpmp3.js?v=3.0.4" defer></script>
+<script src="./stem-ai.js?v=3.2.0" defer></script>
 <script>
 if("serviceWorker" in navigator && location.protocol==="https:"){
  navigator.serviceWorker.register("./sw.js").catch(()=>{});

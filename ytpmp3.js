@@ -110,11 +110,6 @@ function init(){
  const go=$('ytp-convert');if(!go)return;
  go.addEventListener('click',run);
  $('ytp-test').addEventListener('click',testConnection);
- $('ytp-use-link').addEventListener('click',()=>{
-  const link=$('yt-url')?.value.trim();
-  if(link){$('ytp-url').value=link;text('Copied the YouTube link from the deck loader.')}
-  else text('No YouTube link entered above. Paste one in the conversion field.',true);
- });
  $('ytp-url').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run()}});
  text('Beta integration ready. An activated ytpmp3 API key is required; never put it in public GitHub code.');
 }

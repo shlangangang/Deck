@@ -135,6 +135,24 @@ async function runProject(type,device,url){
   await until(page,'window.decked && window.deckedLibrary');
   await until(page,'document.getElementById("lib-tracks").textContent.includes("saved")',16000);
  });
+ await test('reload saved audio and library search',async()=>{
+  await page.locator('#music-library summary').click();
+  await page.locator('#lib-filter').fill('saved');
+  await until(page,'document.getElementById("lib-tracks").textContent.includes("saved")');
+  const rows=await page.locator('#lib-tracks .song-row').count();
+  assert.ok(rows>=1,'Saved track did not survive reload');
+  await page.locator('#lib-tracks .song-row').filter({hasText:'saved'}).first().locator('.tone-a').click();
+  await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("saved")');
+  assert.equal(await page.locator('#song-a').textContent(),'saved');
+  await page.locator('#lib-filter').fill('');
+ });
+ await test('quick-add audio file and persistence queue',async()=>{
+  await page.locator('#quick-file').setInputFiles(file('quick.wav',470));
+  await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("quick")');
+  await page.locator('#open-library').click();
+  await page.locator('#lib-files').setInputFiles([file('rush-one.wav',300),file('rush-two.wav',360)]);
+  await until(page,'document.getElementById("lib-tracks").textContent.includes("rush-one") && document.getElementById("lib-tracks").textContent.includes("rush-two")',22000);
+ });
  await test('4 stems, individual level, mute and panel',async()=>{
   await page.locator('#stems-file-b').setInputFiles([file('vocals.wav',330),file('drums.wav',250),file('bass.wav',130),file('other.wav',420)]);
   await until(page,'window.decked.status("b").loaded');
@@ -142,6 +160,29 @@ async function runProject(type,device,url){
   await setRange(page,'#stem-b-0',25);
   await page.locator('#mute-b-2').click();
   assert.ok(await page.locator('#mute-b-2').evaluate(e=>e.classList.contains('is-muted')));
+ });
+ await test('sync two imported decks',async()=>{
+  await page.locator('#file-a').setInputFiles(file('synced.wav',240));
+  await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("synced")');
+  await page.locator('#bpm-a').fill('120');
+  await page.locator('#bpm-b').fill('100');
+  await page.locator('#sync-a').click();
+  const rate=Number(await page.locator('#tempo-a').inputValue());
+  assert.ok(rate>80&&rate<86,'Unexpected sync tempo '+rate);
+ });
+ await test('recording controls and download if supported',async()=>{
+  await page.locator('#record').click();
+  const label=await page.locator('#record').textContent();
+  if(label.includes('STOP')){
+   const pending=page.waitForEvent('download',{timeout:15000});
+   await page.waitForTimeout(650);
+   await page.locator('#record').click();
+   const download=await pending;
+   assert.ok(download.suggestedFilename().startsWith('decked-mix-'));
+  }else{
+   const message=await page.locator('#message').textContent();
+   assert.ok(/record|support|unavailable/i.test(message),'Unexpected recording failure: '+message);
+  }
  });
  await test('converter input validation without key',async()=>{
   await page.locator('#ytp-panel summary').click();
@@ -151,6 +192,16 @@ async function runProject(type,device,url){
   assert.ok((await page.locator('#ytp-status').textContent()).toLowerCase().includes('key'));
  });
  await page.screenshot({path:path.join(out,prefix+'-final.png'),fullPage:true});
+ await test('offline app shell if service worker is active',async()=>{
+  const enabled=await page.evaluate(()=>Boolean(navigator.serviceWorker&&navigator.serviceWorker.controller));
+  if(!enabled){console.log('INFO '+prefix+' offline skipped (no controlling service worker yet)');return}
+  await context.setOffline(true);
+  try{
+   await page.reload({waitUntil:'domcontentloaded',timeout:9000});
+   await until(page,'!!window.decked && !!window.deckedLibrary',10000);
+   assert.ok(await page.locator('#disk-a').isVisible());
+  }finally{await context.setOffline(false)}
+ });
  await test('no uncaught page errors',async()=>{assert.deepEqual(errors,[],'Page errors: '+errors.join('; '))});
  return {browser:type.name(),device:device.name,passed:true};
  } finally{await browser.close()}

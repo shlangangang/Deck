@@ -139,7 +139,7 @@ async function prepareScratch(d){
      if($("state-"+d.id))$("state-"+d.id).title="Low-latency scratch ready";
     }
     if(m.cmd==="position"&&d.scratch&&d.scratchMode==="pcm"&&Number.isFinite(m.position)){
-     d.scratchSeconds=MIN(m.position/audioCtx.sampleRate,0,duration(d));
+     d.scratchSeconds=MIN(m.position/audioCtx.sampleRate,0,duration(d));draw(d);
     }
    };
   }
@@ -216,8 +216,9 @@ function draw(d){
  disk.classList.toggle("scratching",d.scratch);
  play.textContent=d.playing?"❚❚":"▶";
  play.setAttribute("aria-label",(d.playing?"Pause":"Play")+" deck "+d.id.toUpperCase());
- $("time-"+d.id).textContent=time(position(d))+" / "+time(duration(d));
- const length=duration(d),percent=length?MIN(position(d)/length*100,0,100):0;
+ const now=d.scratch&&d.scratchMode==="pcm"?d.scratchSeconds:position(d);
+ $("time-"+d.id).textContent=time(now)+" / "+time(duration(d));
+ const length=duration(d),percent=length?MIN(now/length*100,0,100):0;
  const seekbar=$("seek-"+d.id);
  if(!seekbar.matches(":active")&&!seekbar.dataset.dragging)seekbar.value=String(percent);
  seekbar.style.setProperty("--progress",percent+"%");
@@ -297,7 +298,7 @@ function fx(side){
 }
 function playStateUpdate(){
  for(const d of Object.values(decks)){
-  if(d.looping&&d.playing&&position(d)>=d.loopEnd){seek(d,d.loopStart)}
+  if(!d.scratch&&d.looping&&d.playing&&position(d)>=d.loopEnd){seek(d,d.loopStart)}
   if(d.voices.length===4&&d.playing){
    const p=position(d);
    for(const v of d.voices.slice(1))if(Math.abs(v.currentTime-p)>0.13){try{v.currentTime=p}catch(e){}}

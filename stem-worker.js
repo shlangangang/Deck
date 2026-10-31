@@ -109,3 +109,75 @@ function pcm(l,r,end){
  }
  return buf;
 }
+
+async function separate(id,left,right){
+ if(!(left instanceof Float32Array)||!(right instanceof Float32Array)||left.length!==right.length)
+  throw Error("Audio analysis input is invalid.");
+ const frames=left.length;
+ if(frames<RATE/10)throw Error("Track is too short.");
+ if(frames>RATE*240)throw Error("iPhone stem analysis is limited to 4-minute tracks.");
+ const session=await modelSession(id);
+ if(cancelled.has(id))throw Error("Cancelled");
+ const chunks=Math.ceil(frames/CHUNK);
+ let prior=null,emitted=0;
+ report(id,"analysis",22,"Separating 4 stems");
+ for(let index=0;index<chunks;index++){
+  if(cancelled.has(id))throw Error("Cancelled");
+  const start=Math.max(0,index*CHUNK-(index>0?OVER:0));
+  const end=Math.min(frames,(index+1)*CHUNK);
+  const count=end-start,final=index===chunks-1;
+  const leftPadded=new Float32Array(P),rightPadded=new Float32Array(P);
+  leftPadded.set(left.subarray(start,end));rightPadded.set(right.subarray(start,end));
+  const L=stft(leftPadded),R=stft(rightPadded),plane=F*T;
+  const data=new Float32Array(4*plane);
+  data.set(L.real,0);data.set(L.imag,plane);
+  data.set(R.real,plane*2);data.set(R.imag,plane*3);
+  const tensor=new ort.Tensor("float32",data,[1,4,F,T]);
+  let inference;
+  try{inference=await session.run({spectrogram:tensor})}
+  finally{if(typeof tensor.dispose==="function")tensor.dispose()}
+  if(cancelled.has(id))throw Error("Cancelled");
+  const source=inference?.separated?.data;
+  if(!source||source.length!==16*plane)throw Error("SCNet returned unexpected output.");
+  const outputs=[],tails=[];
+  for(let stem=0;stem<4;stem++){
+   const base=stem*4*plane;
+   const chL=istft(source,base,count),chR=istft(source,base+plane*2,count);
+   const overlap=index>0?Math.min(OVER,chL.length,prior?.[stem]?.l.length||0):0;
+   if(overlap){
+    for(let i=0;i<overlap;i++){
+     const blend=(i+1)/(overlap+1);
+     chL[i]=prior[stem].l[i]*(1-blend)+chL[i]*blend;
+     chR[i]=prior[stem].r[i]*(1-blend)+chR[i]*blend;
+    }
+   }
+   const reserve=final?0:Math.min(OVER,count-overlap);
+   const emit=count-reserve;
+   outputs.push(pcm(chL,chR,emit));
+   tails.push(reserve?{l:chL.slice(emit),r:chR.slice(emit)}:{l:new Float32Array(0),r:new Float32Array(0)});
+  }
+  prior=tails;
+  const pushed=outputs[0].byteLength/4;
+  emitted+=pushed;
+  postMessage({type:"chunk",id,outputs,frames:pushed,part:index+1,total:chunks},outputs);
+  report(id,"analysis",22+Math.floor(74*(index+1)/chunks),(index+1)+" / "+chunks);
+ }
+ if(emitted!==frames)throw Error("Stem length mismatch ("+emitted+"/"+frames+").");
+ report(id,"done",99,"Preparing stem mixer");
+ postMessage({type:"done",id,frames,rate:RATE,names:NAMES});
+}
+self.onmessage=async event=>{
+ const m=event.data||{};
+ if(m.cmd==="cancel"){cancelled.add(m.id);return}
+ if(m.cmd!=="run")return;
+ if(active!==null){postMessage({type:"error",id:m.id,message:"Already analyzing another song."});return}
+ active=m.id;
+ try{
+  await separate(m.id,new Float32Array(m.left),new Float32Array(m.right));
+ }catch(error){
+  postMessage({type:"error",id:m.id,message:error?.message||String(error)});
+ }finally{
+  active=null;
+  cancelled.delete(m.id);
+ }
+};

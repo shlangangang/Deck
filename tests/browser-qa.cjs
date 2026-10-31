@@ -125,7 +125,17 @@ async function runProject(type,device,url){
  await test('library import and persistence',async()=>{
   await page.locator('#music-library summary').click();
   await page.locator('#lib-files').setInputFiles(file('saved.wav',420));
-  await until(page, 'document.getElementById("lib-count").textContent.includes("TRACK") && document.getElementById("lib-tracks").textContent.includes("saved")',18000);
+  try{
+   await until(page, 'document.getElementById("lib-count").textContent.includes("TRACK") && document.getElementById("lib-tracks").textContent.includes("saved")',18000);
+  }catch(error){
+   const state=await page.evaluate(()=>({message:document.getElementById('lib-message')?.textContent,
+    list:document.getElementById('lib-tracks')?.textContent,count:document.getElementById('lib-count')?.textContent,
+    libraryOpen:document.getElementById('music-library')?.open,
+    indexedDBAvailable:typeof indexedDB!=='undefined'}));
+   console.error('LIBRARY_DIAGNOSTIC '+prefix+' '+JSON.stringify(state));
+   await page.screenshot({path:path.join(out,prefix+'-library-error.png'),fullPage:true});
+   throw error;
+  }
   const list=await page.locator('#lib-tracks').textContent();
   assert.ok(list.includes('saved'),'Track not listed: '+list);
   await page.locator('#lib-tracks .song-row').filter({hasText:'saved'}).first().locator('.tone-a').click();
@@ -141,10 +151,10 @@ async function runProject(type,device,url){
   await until(page,'document.getElementById("lib-tracks").textContent.includes("saved")');
   const rows=await page.locator('#lib-tracks .song-row').count();
   assert.ok(rows>=1,'Saved track did not survive reload');
+  await page.locator('#lib-filter').fill('');
   await page.locator('#lib-tracks .song-row').filter({hasText:'saved'}).first().locator('.tone-a').click();
   await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("saved")');
   assert.equal(await page.locator('#song-a').textContent(),'saved');
-  await page.locator('#lib-filter').fill('');
  });
  await test('quick-add audio file and persistence queue',async()=>{
   await page.locator('#quick-file').setInputFiles(file('quick.wav',470));

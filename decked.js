@@ -179,8 +179,8 @@ function applyMix(){
  const a=Math.cos(crossValue*Math.PI/2),b=Math.sin(crossValue*Math.PI/2);
  for(const d of Object.values(decks)){
   if(d.graph&&audioCtx){
-   d.graph.level.gain.setTargetAtTime(d.gain,audioCtx.currentTime,0.02);
-   d.graph.fade.gain.setTargetAtTime(d.id==="a"?a:b,audioCtx.currentTime,0.02);
+   d.graph.level.gain.setTargetAtTime(d.gain,audioCtx.currentTime,0.009);
+   d.graph.fade.gain.setTargetAtTime(d.id==="a"?a:b,audioCtx.currentTime,0.006);
   }else setVoiceGains(d);
  }
 }
@@ -190,7 +190,7 @@ function applyFilter(d){
  if(Math.abs(f)<4){eq.type="allpass";return}
  eq.type=f<0?"lowpass":"highpass";
  const hz=f<0?18000*Math.pow(0.017,Math.abs(f)/100):50*Math.pow(150,Math.abs(f)/100);
- eq.frequency.setTargetAtTime(MIN(hz,70,19000),audioCtx.currentTime,0.025);
+ eq.frequency.setTargetAtTime(MIN(hz,70,19000),audioCtx.currentTime,0.01);
  eq.Q.value=0.7;
 }
 function applyEcho(d){
@@ -483,7 +483,7 @@ function setup(){
 window.decked={
  loadFile,loadStems,play:toggle,
  isEmpty:side=>!decks[side]?.loaded&&!decks[side]?.loading,
- status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name,fastScratch:!!decks[side].scratchReady,scratchMode:decks[side].scratchMode||'native'}:null,
+ status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name,fastScratch:!!decks[side].scratchReady,scratchMode:decks[side].scratchMode||'native',scratchSeconds:decks[side].scratchSeconds||0,baseLatencyMs:audioCtx&&Number.isFinite(audioCtx.baseLatency)?Math.round(audioCtx.baseLatency*1000):null}:null,
  readFile:supports
 };
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup,{once:true});else setup();

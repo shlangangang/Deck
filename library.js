@@ -63,12 +63,23 @@ async function getAudio(id){
 async function store(meta,blob){
  const db=await open();
  return new Promise((resolve,reject)=>{
-  const tx=db.transaction(["songs","blobs"],"readwrite");
-  tx.objectStore("songs").put(meta);
-  tx.objectStore("blobs").put({id:meta.id,blob});
-  tx.oncomplete=()=>resolve(true);
-  tx.onerror=()=>reject(tx.error||new Error("Storage is full"));
-  tx.onabort=()=>reject(tx.error||new Error("Storage rejected this file"));
+  let tx,settled=false;
+  const done=(ok,value)=>{
+   if(settled)return;settled=true;clearTimeout(timer);
+   if(ok)resolve(value);else reject(value);
+  };
+  const timer=setTimeout(()=>{
+   try{tx?.abort()}catch(error){}
+   done(false,new Error("Music storage timed out"));
+  },6500);
+  try{
+   tx=db.transaction(["songs","blobs"],"readwrite");
+   tx.objectStore("songs").put(meta);
+   tx.objectStore("blobs").put({id:meta.id,blob});
+   tx.oncomplete=()=>done(true,true);
+   tx.onerror=()=>done(false,tx.error||new Error("Storage is full"));
+   tx.onabort=()=>done(false,tx.error||new Error("Storage rejected this file"));
+  }catch(error){done(false,error)}
  });
 }
 async function deleteAudio(id){

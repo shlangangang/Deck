@@ -121,5 +121,6 @@ async function init(){
  try{await refresh();status('Saved locally on this iPhone. Keep an original backup in Files — browser storage can be cleared.')}
  catch(e){status('Music library unavailable: '+e.message,true)}
 }
+window.pocketDeckLibrary=Object.freeze({importFiles,refresh,load});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

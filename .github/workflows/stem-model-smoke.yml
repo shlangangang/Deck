@@ -1,0 +1,28 @@
+name: DECKED real AI model smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - tests/stem-model-smoke.cjs
+      - .github/workflows/stem-model-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium for free browser AI testing
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Download real SCNet weights and separate a generated WAV
+        run: node tests/stem-model-smoke.cjs

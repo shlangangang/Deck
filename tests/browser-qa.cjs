@@ -164,6 +164,7 @@ async function runProject(type,device,url){
  await test('sync two imported decks',async()=>{
   await page.locator('#file-a').setInputFiles(file('synced.wav',240));
   await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("synced")');
+  if(await page.locator('#stem-panel-a').isHidden())await page.locator('#stems-a').click();
   await page.locator('#bpm-a').fill('120');
   await page.locator('#bpm-b').fill('100');
   await page.locator('#sync-a').click();

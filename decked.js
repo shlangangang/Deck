@@ -113,7 +113,7 @@ async function prepareScratch(d){
  d.scratchPreparing=true;
  try{
   if(!scratchWorkletModule){
-   scratchWorkletModule=audioCtx.audioWorklet.addModule("./scratch-worklet.js?v=3.1.0")
+   scratchWorkletModule=audioCtx.audioWorklet.addModule("./scratch-worklet.js?v=3.1.1")
      .catch(error=>{scratchWorkletModule=null;throw error});
   }
   await scratchWorkletModule;

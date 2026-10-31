@@ -144,14 +144,16 @@ async function saveSelected(selected, options={}){
     size:file.size,signature,created:Date.now()};
    try{
     tell("Saving "+meta.title+"…",false,options.silent);
+    // Safari's IndexedDB can stall serialising multiple Blob objects. For
+    // normal songs use a structured-cloneable Uint8Array first. Large songs
+    // retain streaming Blob storage so iPhones don't allocate huge buffers.
     const blob=file.slice(0,file.size,file.type||"application/octet-stream");
-    try{await store(meta,blob)}
-    catch(blobError){
-     // Some WebKit storage implementations reject Blob cloning. Small files can
-     // safely use a structured-cloneable Uint8Array instead.
-     if(file.size>24*1024*1024)throw blobError;
+    if(file.size<=24*1024*1024){
      const bytes=new Uint8Array(await file.arrayBuffer());
-     await store(meta,bytes);
+     try{await store(meta,bytes)}
+     catch(bytesError){await store(meta,blob)}
+    }else{
+     await store(meta,blob);
     }
     sigs.add(signature);saved++;
    }catch(error){console.error("Audio save failed:",error);failed++;tell("iPhone storage is full or unavailable. You can still play the file directly.",true,options.silent)}

@@ -10,6 +10,7 @@ const decks = {
  b: {id:"b", voices:[], loaded:false, playing:false, loading:false, rate:1, gain:0.9, filter:0, cue:0, looping:false, loopStart:0, loopEnd:0, fx:false, scratch:false, scratchWasPlaying:false, name:"", bpm:120, urls:[], offsets:[1,1,1,1], mute:[false,false,false,false]}
 };
 let audioCtx=null, master=null, recordingDest=null, recorder=null, chunks=[], toastTimer=0;
+let scratchWorkletModule=null;
 let crossValue=0.5, lastFrame=0, firstInteraction=false;
 const supports = file => Boolean(file && file.size>0 && (AUDIO_EXT.test(file.name||"") || /^audio\//.test(file.type||"")));
 function alertMessage(message, error=false) {
@@ -59,6 +60,9 @@ function drop(d) {
  if(d.graph && d.graph.inputs){for(const input of d.graph.inputs){try{input.source.disconnect();input.gain.disconnect()}catch(e){}}d.graph.inputs=[]}
  for(const url of d.urls){try{URL.revokeObjectURL(url)}catch(e){}}
  d.urls=[];d.loaded=false;d.loading=false;d.playing=false;d.looping=false;d.fx=false;d.scratch=false;
+ d.scratchGeneration=(d.scratchGeneration||0)+1;
+ d.scratchFile=null;d.scratchReady=false;d.scratchPreparing=false;d.scratchMode="native";
+ if(d.scratchNode){try{d.scratchNode.port.postMessage({cmd:"clear"})}catch(e){}}
 }
 function ensureGraph(){
  if(audioCtx)return true;
@@ -85,7 +89,10 @@ function ensureGraph(){
    d.graph={eq,level,fade,delay,send,feedback,inputs:[]};
   }
   audioCtx=ctx;
-  for(const d of Object.values(decks)) attachVoices(d);
+  for(const d of Object.values(decks)){
+   attachVoices(d);
+   if(d.scratchFile)prepareScratch(d);
+  }
   applyMix();
   return true;
  }catch(error){
@@ -94,6 +101,57 @@ function ensureGraph(){
   audioCtx=null;return false;
  }
 }
+
+/* Prepare a PCM scratch deck *after* the native track is already usable.
+   AudioWorklet runs 128 sample frames per quantum, avoiding slow HTMLMediaElement seeks.
+   This is optional on large files or unsupported browsers. */
+async function prepareScratch(d){
+ if(!audioCtx||!audioCtx.audioWorklet||!window.AudioWorkletNode||!d.scratchFile||
+    d.voices.length!==1||d.scratchReady||d.scratchPreparing)return;
+ const file=d.scratchFile,generation=d.scratchGeneration;
+ if(file.size>32*1024*1024){d.scratchMode="native";return}
+ d.scratchPreparing=true;
+ try{
+  if(!scratchWorkletModule){
+   scratchWorkletModule=audioCtx.audioWorklet.addModule("./scratch-worklet.js?v=3.1.0")
+     .catch(error=>{scratchWorkletModule=null;throw error});
+  }
+  await scratchWorkletModule;
+  if(generation!==d.scratchGeneration)return;
+  // Decode in parallel with normal playback, never block the first play tap.
+  const bytes=await file.arrayBuffer();
+  if(generation!==d.scratchGeneration)return;
+  const decoded=await audioCtx.decodeAudioData(bytes);
+  if(generation!==d.scratchGeneration)return;
+  // Prevent large mobile RAM spikes (WebKit may terminate oversized tabs).
+  if(decoded.length>audioCtx.sampleRate*15*60)return;
+  const left=decoded.getChannelData(0).slice();
+  const right=decoded.numberOfChannels>1?decoded.getChannelData(1).slice():left.slice();
+  if(generation!==d.scratchGeneration)return;
+  if(!d.scratchNode){
+   const node=new AudioWorkletNode(audioCtx,"decked-scratch",{outputChannelCount:[2]});
+   node.connect(d.graph.eq);
+   d.scratchNode=node;
+   node.port.onmessage=event=>{
+    const m=event.data||{};
+    if(m.cmd==="ready"&&m.generation===d.scratchGeneration){
+     d.scratchReady=true;d.scratchSampleRate=audioCtx.sampleRate;
+     if($("state-"+d.id))$("state-"+d.id).title="Low-latency scratch ready";
+    }
+    if(m.cmd==="position"&&d.scratch&&d.scratchMode==="pcm"&&Number.isFinite(m.position)){
+     d.scratchSeconds=MIN(m.position/audioCtx.sampleRate,0,duration(d));
+    }
+   };
+  }
+  d.scratchNode.port.postMessage({cmd:"load",left,right,generation},[left.buffer,right.buffer]);
+ }catch(error){
+  console.warn("Fast vinyl scratch unavailable; using normal file playback",error);
+  d.scratchReady=false;
+ }finally{
+  if(generation===d.scratchGeneration)d.scratchPreparing=false;
+ }
+}
+
 function attachVoices(d) {
  if(!audioCtx||!d.graph)return;
  for(let i=d.graph.inputs.length;i<d.voices.length;i++){
@@ -173,7 +231,8 @@ async function loadFile(side,file,opts={}){
  if(!supports(file)){alertMessage("Select an MP3, M4A or WAV file from Files.",true);return false}
  drop(d);
  d.name=opts.name||titleOf(file);d.loading=true;d.voices=[createVoice(file,d,0)];
- if(audioCtx)attachVoices(d);
+ d.scratchFile=file;d.scratchReady=false;
+ if(audioCtx){attachVoices(d);prepareScratch(d)}
  d.cue=0;d.rate=1;d.gain=0.9;d.offsets=[1,1,1,1];d.mute=[false,false,false,false];
  $("tempo-"+side).value="100";$("volume-"+side).value="90";$("filter-"+side).value="0";
  d.filter=0;applyFilter(d);applyMix();setRate(d);draw(d);
@@ -192,6 +251,7 @@ async function loadStems(side,files){
  drop(d);d.name=titleOf(ordered[0]).replace(/vocals?/i,"").trim()||"4 stems";
  d.loading=true;d.voices=ordered.map((file,i)=>createVoice(file,d,i));
  if(audioCtx)attachVoices(d);
+ d.scratchFile=null;d.scratchReady=false;
  d.offsets=[1,1,1,1];d.mute=[false,false,false,false];
  d.cue=0;d.rate=1;d.gain=0.9;d.filter=0;
  $("tempo-"+side).value=100;$("volume-"+side).value=90;$("filter-"+side).value=0;
@@ -207,7 +267,7 @@ async function toggle(side){
  if(d.playing){voices.forEach(v=>v.pause());d.playing=false;draw(d);return}
  if(!voices.length)return;
  if(ensureGraph()) {
-  attachVoices(d);applyMix();applyFilter(d);
+  attachVoices(d);applyMix();applyFilter(d);prepareScratch(d);
   const res=audioCtx.resume();res.catch(error=>console.warn("Audio resume",error));
  }
  try{
@@ -247,40 +307,87 @@ function playStateUpdate(){
 }
 function scratchSetup(d){
  const disk=$("disk-"+d.id);
- let startAngle=0,lastAngle=0,lastT=0,held=false,wasPlaying=false;
- const angle=e=>{const r=disk.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))};
+ let lastAngle=0,lastT=0,held=false,wasPlaying=false,quietTimer=null,lastFallback=0;
+ const angle=e=>{
+  const r=disk.getBoundingClientRect();
+  return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2));
+ };
  function down(e){
-  if(!d.loaded)return; // Native input on empty platter handles choosing audio.
-  e.preventDefault();held=true;wasPlaying=d.playing;d.scratch=true;d.scratchWasPlaying=wasPlaying;
+  if(!d.loaded)return; // The big + overlay opens the native file picker on empty decks.
+  e.preventDefault();
+  held=true;wasPlaying=d.playing;
+  d.scratch=true;d.scratchWasPlaying=wasPlaying;
   try{disk.setPointerCapture(e.pointerId)}catch(err){}
   document.documentElement.classList.add("scratch-locked");
-  lastAngle=angle(e);startAngle=lastAngle;lastT=performance.now();
-  if(ensureGraph()){attachVoices(d);applyMix();audioCtx.resume().catch(()=>{})}
-  d.voices.forEach(v=>{try{v.playbackRate=0.5;v.play().catch(()=>{})}catch(err){}});
+  lastAngle=angle(e);lastT=performance.now();lastFallback=lastT;
+  const graphReady=ensureGraph();
+  if(graphReady){
+   attachVoices(d);applyMix();audioCtx.resume().catch(()=>{});
+   if(!d.scratchReady)prepareScratch(d);
+  }
+  const fast=Boolean(graphReady&&d.scratchReady&&d.scratchNode&&d.voices.length===1);
+  d.scratchMode=fast?"pcm":"native";
+  d.scratchSeconds=position(d);
+  if(fast){
+   // Silence the high-latency media source and render direct PCM in the AudioWorklet.
+   d.voices.forEach(v=>v.pause());
+   d.scratchNode.port.postMessage({cmd:"start",position:Math.floor(d.scratchSeconds*audioCtx.sampleRate)});
+   d.scratchNode.port.postMessage({cmd:"speed",speed:0});
+  }else{
+   // Graceful fallback while decoding or when AudioWorklet is unavailable.
+   d.voices.forEach(v=>{try{v.playbackRate=0.5;v.play().catch(()=>{})}catch(err){}});
+  }
   disk.classList.add("scratching");draw(d);
  }
  function move(e){
-  if(!held)return;e.preventDefault();
-  const a=angle(e);let diff=a-lastAngle;
+  if(!held)return;
+  e.preventDefault();
+  const now=performance.now(),a=angle(e);
+  let diff=a-lastAngle;
   while(diff>Math.PI)diff-=Math.PI*2;
-  while(diff<-Math.PI)diff+=Math.PI*2;
-  if(Math.abs(diff)>0.001){
-   // One 33 RPM rotation corresponds to roughly 1.8 seconds.
-   seek(d,position(d)+diff/Math.PI*0.9);
-   const elapsed=Math.max(0.015,(performance.now()-lastT)/1000);
-   const speed=MIN(Math.abs(diff)/(elapsed*Math.PI)*0.9,0.45,3);
-   d.voices.forEach(v=>{try{v.playbackRate=speed}catch(err){}});
-   lastAngle=a;lastT=performance.now();
-   disk.style.setProperty("--scratch-angle",(Number(disk.dataset.rotation||"0")+diff*180/Math.PI)+"deg");
-   disk.dataset.rotation=String(Number(disk.dataset.rotation||"0")+diff*180/Math.PI);
+  while(diff< -Math.PI)diff+=Math.PI*2;
+  if(Math.abs(diff)>0.0005){
+   const dt=Math.max(0.008,(now-lastT)/1000);
+   // Clockwise full turn = 1.8 seconds of audio at 33 RPM.
+   const delta=diff/Math.PI*0.9;
+   const velocity=MIN(delta/dt,-4,4);
+   if(d.scratchMode==="pcm"){
+    d.scratchSeconds=MIN(d.scratchSeconds+delta,0,Math.max(0,duration(d)-0.01));
+    d.scratchNode.port.postMessage({cmd:"speed",speed:velocity});
+    clearTimeout(quietTimer);
+    quietTimer=setTimeout(()=>{
+     if(held&&d.scratchMode==="pcm")d.scratchNode.port.postMessage({cmd:"speed",speed:0});
+    },55);
+   }else if(now-lastFallback>45){
+    // Throttle native seeks: old code issued one per event, causing queue backlogs.
+    seek(d,position(d)+delta);
+    const speed=MIN(Math.abs(velocity),0.45,3);
+    d.voices.forEach(v=>{try{v.playbackRate=speed}catch(err){}});
+    lastFallback=now;
+   }
+   lastAngle=a;lastT=now;
+   const degrees=Number(disk.dataset.rotation||"0")+diff*180/Math.PI;
+   disk.style.setProperty("--scratch-angle",degrees+"deg");
+   disk.dataset.rotation=String(degrees);
   }
  }
- function end(e){
+ function end(){
   if(!held)return;
-  held=false;d.scratch=false;disk.classList.remove("scratching");
+  held=false;d.scratch=false;
+  clearTimeout(quietTimer);disk.classList.remove("scratching");
   if(!Object.values(decks).some(x=>x.scratch))document.documentElement.classList.remove("scratch-locked");
-  d.voices.forEach(v=>{v.playbackRate=d.rate;if(!wasPlaying)v.pause()});
-  d.playing=wasPlaying;draw(d);
+  if(d.scratchMode==="pcm"&&d.scratchNode){
+   d.scratchNode.port.postMessage({cmd:"stop"});
+   seek(d,d.scratchSeconds);
+   if(wasPlaying){
+    const pending=d.voices.map(v=>{v.playbackRate=d.rate;return v.play()});
+    Promise.all(pending).then(()=>{d.playing=true;draw(d)}).catch(()=>{d.playing=false;draw(d)});
+   }else d.playing=false;
+  }else{
+   d.voices.forEach(v=>{v.playbackRate=d.rate;if(!wasPlaying)v.pause()});
+   d.playing=wasPlaying;
+  }
+  d.scratchMode="native";draw(d);
  }
  disk.addEventListener("pointerdown",down,{passive:false});
  disk.addEventListener("pointermove",move,{passive:false});
@@ -289,6 +396,7 @@ function scratchSetup(d){
  disk.addEventListener("lostpointercapture",end);
  disk.addEventListener("contextmenu",e=>e.preventDefault());
 }
+
 function updateStemControls(d){
  for(let i=0;i<4;i++){
   const input=$("stem-"+d.id+"-"+i),mute=$("mute-"+d.id+"-"+i);
@@ -375,7 +483,7 @@ function setup(){
 window.decked={
  loadFile,loadStems,play:toggle,
  isEmpty:side=>!decks[side]?.loaded&&!decks[side]?.loading,
- status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name}:null,
+ status:side=>decks[side]?{loaded:decks[side].loaded,loading:decks[side].loading,playing:decks[side].playing,name:decks[side].name,fastScratch:!!decks[side].scratchReady,scratchMode:decks[side].scratchMode||'native'}:null,
  readFile:supports
 };
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup,{once:true});else setup();

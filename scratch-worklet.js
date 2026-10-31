@@ -15,7 +15,7 @@ class DeckedScratchProcessor extends AudioWorkletProcessor{
     this.length=this.left?this.left.length:0;
     this.position=0;this.active=false;
     this.targetSpeed=0;this.speed=0;this.level=0;
-    this.port.postMessage({cmd:'ready',length:this.length});
+    this.port.postMessage({cmd:'ready',length:this.length,generation:data.generation});
    }else if(data.cmd==='start'){
     this.position=Math.max(0,Math.min(Math.max(0,this.length-2),data.position||0));
     this.speed=0;this.targetSpeed=0;this.level=0;

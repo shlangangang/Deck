@@ -1,9 +1,18 @@
-# Pocket Deck
+# DECKED
 
-An installable iPhone-friendly, zero-AI-token, two-deck DJ webpage.
+Local-first DJ console for iPhone Safari and desktop browsers.
 
-**Launch:** Once Pages is enabled for `main` branch `/(root)`, open https://shlangangang.github.io/Deck/ on Safari and choose Share → Add to Home Screen.
+**Use:** Open https://shlangangang.github.io/Deck/ in Safari. Tap **＋** on Deck A or B, pick an unprotected MP3/M4A/WAV from Files, then press **▶**. Use the **LIBRARY** drawer to save tracks to the device or load them again later.
 
-**Controls:** Imported local audio supports live scratching, mixing, filters, loops, echo and pre-separated four-stem control. YouTube links use the official embedded player; song search requires your own YouTube Data API key. YouTube does not expose raw audio for scratching or separation.
+## How it works
 
-**Privacy/cost:** No AI inference. Your local audio stays in your browser unless you choose to export something. No payment needed to run the website.
+- Native HTML audio players load local audio immediately from a Blob URL. No Web Audio decoding is required just to select and play a song.
+- When supported, Web Audio provides equal-power crossfading, filters and echo. If Web Audio is unavailable, native audio playback remains available.
+- Vinyl touch controls scrub position and produce playback stutter; reverse sample-accurate vinyl scratching is not supported by the native playback engine.
+- Four stem files can be imported and controlled as separate players; timing may drift slightly on mobile hardware.
+- The browser's IndexedDB stores music metadata and audio Blobs separately. Importing into a deck does not depend on database storage succeeding.
+- The optional ytpmp3 beta connector needs a provider key, website CORS support and rights to the source audio. It has not been verified end-to-end.
+
+## Notes
+
+Protected Apple Music streaming downloads cannot be opened as editable audio files. Imported music is not uploaded by DECKED. Safari clearing website data can delete its saved library, so keep original music in Files.

@@ -250,7 +250,7 @@ function scratchSetup(d){
  let startAngle=0,lastAngle=0,lastT=0,held=false,wasPlaying=false;
  const angle=e=>{const r=disk.getBoundingClientRect();return Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2))};
  function down(e){
-  if(!d.loaded){alertMessage("Use + to add a local track.",true);return}
+  if(!d.loaded)return; // Native input on empty platter handles choosing audio.
   e.preventDefault();held=true;wasPlaying=d.playing;d.scratch=true;d.scratchWasPlaying=wasPlaying;
   try{disk.setPointerCapture(e.pointerId)}catch(err){}
   document.documentElement.classList.add("scratch-locked");
@@ -349,10 +349,16 @@ function setup(){
    d.rate=target;$("tempo-"+d.id).value=Math.round(target*100);setRate(d);draw(d);
    alertMessage("Tempo synced to "+other.id.toUpperCase());
   });
-  fileInput("file-"+d.id,files=>{
+  const assignTrack=files=>{
    const file=files[0];
-   loadFile(d.id,file).then(ok=>{if(ok&&window.deckedLibrary?.saveFiles)window.deckedLibrary.saveFiles([file],{silent:true}).catch(()=>{})});
-  });
+   loadFile(d.id,file).then(ok=>{
+    if(ok&&window.deckedLibrary?.saveFiles){
+     window.deckedLibrary.saveFiles([file],{silent:true}).catch(()=>{});
+    }
+   });
+  };
+  fileInput("file-"+d.id,assignTrack);
+  fileInput("disk-file-"+d.id,assignTrack);
   fileInput("stems-file-"+d.id,files=>loadStems(d.id,files));
   draw(d);
  }

@@ -239,6 +239,45 @@ async function runProject(type,device,url){
    assert.ok(/record|support|unavailable/i.test(message),'Unexpected recording failure: '+message);
   }
  });
+ await test('AI SPLIT makes four playable stems from one track',async()=>{
+  // Controlled worker makes deterministic source separation output.
+  // This tests actual UI, decode, WAV generation, stems and transport,
+  // not remote model weights (tested independently).
+  await page.evaluate(()=>{
+   window.Worker=class FakeStemWorker{
+    constructor(){this.onmessage=null;this.onerror=null;this.terminated=false}
+    postMessage(msg){
+     if(msg.cmd!=="run")return;
+     const L=new Float32Array(msg.left),R=new Float32Array(msg.right);
+     const streams=Array.from({length:4},()=>new ArrayBuffer(L.length*4));
+     for(let k=0;k<4;k++){
+      const data=new DataView(streams[k]);
+      for(let i=0;i<L.length;i++){
+       data.setInt16(i*4,Math.round(Math.max(-1,Math.min(1,L[i]/4))*32767),true);
+       data.setInt16(i*4+2,Math.round(Math.max(-1,Math.min(1,R[i]/4))*32767),true);
+      }
+     }
+     setTimeout(()=>{
+      if(this.terminated)return;
+      this.onmessage?.({data:{id:msg.id,type:"progress",percent:45,message:"ANALYZING"}});
+      this.onmessage?.({data:{id:msg.id,type:"chunk",frames:L.length,outputs:streams}});
+      this.onmessage?.({data:{id:msg.id,type:"done",frames:L.length,rate:44100}});
+     },20);
+    }
+    terminate(){this.terminated=true}
+   };
+  });
+  await page.locator('#ai-a').click();
+  await until(page,'window.decked.status("a").hasStems===true',23000);
+  assert.ok((await page.locator('#ai-label-a').textContent()).includes('READY'));
+  assert.ok(!(await page.locator('#stem-panel-a').isHidden()));
+  await page.locator('#mute-a-0').click();
+  assert.ok(await page.locator('#mute-a-0').evaluate(e=>e.classList.contains('is-muted')));
+  await page.locator('#play-a').click();
+  await until(page,'window.decked.status("a").playing===true',10000);
+  await page.locator('#play-a').click();
+  assert.equal((await page.locator('#song-a').textContent()).trim(),'synced');
+ });
  await test('converter input validation without key',async()=>{
   await page.locator('#ytp-panel summary').click();
   await page.locator('#ytp-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');

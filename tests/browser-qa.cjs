@@ -158,7 +158,7 @@ async function runProject(type,device,url){
  });
  await test('quick-add audio file and persistence queue',async()=>{
   await page.locator('#quick-file').setInputFiles(file('quick.wav',470));
-  await until(page,'window.decked.status("a").loaded && window.decked.status("a").name.includes("quick")');
+  await until(page,'window.decked.status("b").loaded && window.decked.status("b").name.includes("quick")');
   await page.locator('#open-library').click();
   await page.locator('#lib-files').setInputFiles([file('rush-one.wav',300),file('rush-two.wav',360)]);
   await until(page,'document.getElementById("lib-tracks").textContent.includes("rush-one") && document.getElementById("lib-tracks").textContent.includes("rush-two")',22000);

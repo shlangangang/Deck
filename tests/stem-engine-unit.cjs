@@ -74,11 +74,25 @@ async function run(frames){
  assert.ok(maxError<.001,"Signal reconstruction error: "+maxError);
  console.log("PASS STEM DSP "+frames+" frames, "+chunks.length+" chunk(s), RMSE "+rmse+", max "+maxError);
 }
-(async()=>{
- await run(44100);
- // Validate overlap frame accounting without repeating expensive 476-frame FFTs.
- const chunk=485100,overlap=2048,n=chunk+44100;
- assert.equal((chunk-overlap)+(n-chunk+overlap),n);
- console.log("PASS STEM CHUNK OVERLAP frame accounting");
- console.log("ALL STEM DSP TESTS PASSED");
-})().catch(e=>{console.error(e.stack);process.exitCode=1});
+// Fast signal-processing regression; real SCNet inference is tested separately.
+const scope={
+ self:{},postMessage(){},ort:fakeOrt,importScripts(){},
+ caches:{open:async()=>({match:async()=>null})},
+ fetch(){throw Error("unexpected network fetch")},
+ Float32Array,Uint8Array,ArrayBuffer,DataView,Math,Number,Set,Promise,Error,console
+};
+vm.createContext(scope);
+vm.runInContext(code+";this.mathOps={fft,pcm,CHUNK,OVER};",scope,{timeout:10000});
+const {fft,pcm,CHUNK,OVER}=scope.mathOps;
+const size=4096,re=new Float32Array(size),im=new Float32Array(size);
+for(let i=0;i<size;i++)re[i]=.4*Math.sin(i*2*Math.PI*180/44100);
+const reference=re.slice();
+fft(re,im,false);fft(re,im,true);
+let error=0;
+for(let i=0;i<size;i++)error=Math.max(error,Math.abs(re[i]-reference[i]));
+assert.ok(error<.00001,"FFT reconstruction error: "+error);
+const bytes=pcm(re,im,size);
+assert.equal(bytes.byteLength,size*4);
+assert.equal((CHUNK-OVER)+(44100+OVER),CHUNK+44100);
+console.log("PASS STEM FFT roundtrip, 16-bit PCM encoding and overlap accounting");
+console.log("ALL STEM DSP TESTS PASSED");

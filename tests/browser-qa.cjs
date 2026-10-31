@@ -37,6 +37,9 @@ function wave({seconds=3,freq=220}={}){
 }
 const file=(name,freq=220)=>({name,mimeType:'audio/wav',buffer:wave({freq})});
 async function until(page,js,timeout=12000){await page.waitForFunction(js,null,{timeout})}
+async function setRange(page,id,value){
+ await page.locator(id).evaluate((input,n)=>{input.value=String(n);input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));},value);
+}
 async function runProject(type,device,url){
  const browser=await type.launch({headless:true,args:type.name()==='chromium'?['--autoplay-policy=no-user-gesture-required']:[]});
  const context=await browser.newContext({viewport:device.viewport,isMobile:device.mobile,hasTouch:device.touch,deviceScaleFactor:device.scale||1,acceptDownloads:true});
@@ -73,7 +76,7 @@ async function runProject(type,device,url){
  await test('play / pause / resume position advances',async()=>{
   await page.locator('#play-a').click();
   await until(page,'window.decked.status("a").playing===true');
-  await page.waitForTimeout(650);
+  await page.waitForTimeout(1400);
   let t1=await page.locator('#time-a').textContent();
   assert.ok(!t1.startsWith('00:00 /'),'Position did not advance: '+t1);
   await page.locator('#play-a').click();
@@ -82,9 +85,9 @@ async function runProject(type,device,url){
   await until(page,'window.decked.status("a").playing===true');
  });
  await test('cue, loop, echo, tempo, gain, filter',async()=>{
-  await page.locator('#tempo-a').fill('120');
-  await page.locator('#filter-a').fill('-40');
-  await page.locator('#volume-a').fill('67');
+  await setRange(page,'#tempo-a',120);
+  await setRange(page,'#filter-a',-40);
+  await setRange(page,'#volume-a',67);
   await page.locator('#loop-a').click();
   assert.ok(await page.locator('#loop-a').evaluate(e=>e.classList.contains('is-on')));
   await page.locator('#loop-a').click();
@@ -108,11 +111,11 @@ async function runProject(type,device,url){
   await until(page,'window.decked.status("b").loaded===true');
   await page.locator('#play-b').click();
   await until(page,'window.decked.status("b").playing===true');
-  await page.locator('#cross').fill('0');
+  await setRange(page,'#cross',0);
   assert.equal(await page.locator('#cross').inputValue(),'0');
-  await page.locator('#cross').fill('100');
+  await setRange(page,'#cross',100);
   assert.equal(await page.locator('#cross').inputValue(),'100');
-  await page.locator('#cross').fill('50');
+  await setRange(page,'#cross',50);
  });
  await page.screenshot({path:path.join(out,prefix+'-playing.png'),fullPage:true});
  await test('library import and persistence',async()=>{
@@ -132,7 +135,7 @@ async function runProject(type,device,url){
   await page.locator('#stems-file-b').setInputFiles([file('vocals.wav',330),file('drums.wav',250),file('bass.wav',130),file('other.wav',420)]);
   await until(page,'window.decked.status("b").loaded');
   if(await page.locator('#stem-panel-b').isHidden())await page.locator('#stems-b').click();
-  await page.locator('#stem-b-0').fill('25');
+  await setRange(page,'#stem-b-0',25);
   await page.locator('#mute-b-2').click();
   assert.ok(await page.locator('#mute-b-2').evaluate(e=>e.classList.contains('is-muted')));
  });

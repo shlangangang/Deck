@@ -139,7 +139,10 @@ async function prepareScratch(d){
      if($("state-"+d.id))$("state-"+d.id).title="Low-latency scratch ready";
     }
     if(m.cmd==="position"&&d.scratch&&d.scratchMode==="pcm"&&Number.isFinite(m.position)){
-     d.scratchSeconds=MIN(m.position/audioCtx.sampleRate,0,duration(d));draw(d);
+     if(performance.now()-(d.scratchLastPointerAt||0)>75){
+      d.scratchSeconds=MIN(m.position/audioCtx.sampleRate,0,duration(d));
+      draw(d);
+     }
     }
    };
   }
@@ -329,6 +332,7 @@ function scratchSetup(d){
   const fast=Boolean(graphReady&&d.scratchReady&&d.scratchNode&&d.voices.length===1);
   d.scratchMode=fast?"pcm":"native";
   d.scratchSeconds=position(d);
+  d.scratchLastPointerAt=performance.now();
   if(fast){
    // Silence the high-latency media source and render direct PCM in the AudioWorklet.
    d.voices.forEach(v=>v.pause());
@@ -354,7 +358,11 @@ function scratchSetup(d){
    const velocity=MIN(delta/dt,-4,4);
    if(d.scratchMode==="pcm"){
     d.scratchSeconds=MIN(d.scratchSeconds+delta,0,Math.max(0,duration(d)-0.01));
-    d.scratchNode.port.postMessage({cmd:"speed",speed:velocity});
+    d.scratchLastPointerAt=now;
+    d.scratchNode.port.postMessage({
+     cmd:"seek",position:Math.round(d.scratchSeconds*audioCtx.sampleRate),speed:velocity
+    });
+    draw(d);
     clearTimeout(quietTimer);
     quietTimer=setTimeout(()=>{
      if(held&&d.scratchMode==="pcm")d.scratchNode.port.postMessage({cmd:"speed",speed:0});

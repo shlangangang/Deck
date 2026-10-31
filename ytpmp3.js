@@ -2,7 +2,8 @@
    User-supplied keys are transient. No server secrets or scraping. */
 (function(){
 'use strict';
-const API='https://api.ytpmp3.com/v1/convert';
+const ROOT='https://api.ytpmp3.com/v1';
+const API=ROOT+'/convert';
 const $=id=>document.getElementById(id);
 let busy=false;
 const text=(msg,bad=false)=>{const el=$('ytp-status');if(el){el.textContent=msg;el.classList.toggle('error',bad)}};
@@ -23,12 +24,6 @@ function getId(value){
 function safeDownload(url){
  try{const u=new URL(url);return u.protocol==='https:'?u.href:null}catch(e){return null}
 }
-function fallback(url,msg){
- const anchor=$('ytp-download');
- const safe=safeDownload(url);
- if(safe){anchor.href=safe;anchor.hidden=false;}
- text(msg,true);
-}
 function parseError(body,status){
  const detail=body&&typeof body==='object'?(body.error?.message||body.error||body.message||body.detail):null;
  const reason=typeof detail==='string'?detail.slice(0,220):'HTTP '+status;
@@ -44,7 +39,7 @@ async function run(){
  const key=$('ytp-key').value.trim();
  const rights=$('ytp-rights').checked;
  const button=$('ytp-convert');
- $('ytp-download').hidden=true;
+
  if(!videoId){text('Paste a valid YouTube video link or ID first.',true);return}
  if(!rights){text('Confirm you own the audio or have permission to download it.',true);return}
  if(!key){text('ytpmp3 requires a beta API key. Request access from api@ytpmp3.com, then paste your key here. Or use the website and import your downloaded audio manually.',true);return}
@@ -74,8 +69,7 @@ async function run(){
    media=await audio.blob();
    if(!media.size||media.size>300*1024*1024)throw new Error('The converted audio is empty or over the 300 MB library limit');
   }catch(e){
-   fallback(download,'Conversion succeeded, but Safari could not transfer the MP3 into the library automatically (possibly cross-origin restrictions). Tap DOWNLOAD MP3 below, save it to Files, then use SAVED MUSIC LIBRARY → IMPORT MUSIC. '+(e.name==='AbortError'?'Transfer timed out.':''));
-   return;
+   throw new Error('The provider returned an MP3 URL, but direct transfer into this browser failed. The website needs CORS access to the audio URL. '+(e.name==='AbortError'?'Request timed out.':String(e.message||e)));
   }
   const title=String(payload?.title||'YouTube audio '+videoId).replace(/[\u0000-\u001f\\/<>:"|?*]/g,' ').trim().slice(0,110)||'Converted Audio';
   const file=new File([media],title+'.mp3',{type:'audio/mpeg',lastModified:Date.now()});
@@ -84,13 +78,36 @@ async function run(){
  }catch(e){
   if(e.name==='AbortError')text('ytpmp3 request timed out. Try again later or use its website manually.',true);
   else if(e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(e.message||'')){
-   text('Direct API request failed. This may be a network or browser CORS restriction on ytpmp3. GitHub Pages cannot override that; use the provider website and import the MP3 from Files.',true);
+   text('Cannot contact the ytpmp3 API from this browser. The provider must allow CORS requests from https://shlangangang.github.io, including Authorization headers. A server-side proxy may be required. API key is unchanged.',true);
   }else text(e.message||'Conversion failed',true);
  }finally{clearTimeout(timeout);busy=false;button.disabled=false;button.textContent='CONVERT + SAVE MP3'}
 }
+
+async function testConnection(){
+ const key=$('ytp-key').value.trim();
+ if(!key){text('Paste the beta API key first, then run the connection test.',true);return}
+ const button=$('ytp-test');
+ button.disabled=true;button.textContent='TESTING…';
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  text('Checking ytpmp3 API key and browser connection…');
+  const response=await fetch(ROOT+'/usage',{method:'GET',mode:'cors',cache:'no-store',signal:controller.signal,headers:{Authorization:'Bearer '+key}});
+  let data={};
+  try{data=await response.json()}catch(e){}
+  if(!response.ok)throw new Error(parseError(data,response.status));
+  const used=Number.isFinite(Number(data?.used))?' · '+data.used+' requests used':'';
+  text('ytpmp3 API connection verified. Key accepted'+used+'. You can now convert an authorised video.');
+ }catch(e){
+  if(e instanceof TypeError || /Failed to fetch|NetworkError|Load failed/i.test(e.message||'')){
+   text('API connection failed in Safari. ytpmp3 may not allow cross-origin requests from GitHub Pages, or its API may be unreachable. Server-side proxy may be needed.',true);
+  }else text('API test failed: '+(e.message||String(e)),true);
+ }finally{clearTimeout(timeout);button.disabled=false;button.textContent='TEST CONNECTION'}
+}
+
 function init(){
  const go=$('ytp-convert');if(!go)return;
  go.addEventListener('click',run);
+ $('ytp-test').addEventListener('click',testConnection);
  $('ytp-use-link').addEventListener('click',()=>{
   const link=$('yt-url')?.value.trim();
   if(link){$('ytp-url').value=link;text('Copied the YouTube link from the deck loader.')}

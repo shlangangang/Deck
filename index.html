@@ -113,8 +113,6 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
 .ytp-docs{color:#a0e9df;font-size:11px;text-decoration:none}
 .ytp-message{font-size:11px;color:#95dfcd;line-height:1.5;min-height:18px;margin:11px 0}
 .ytp-message.error{color:#ffbab5}
-#ytp-download{display:inline-flex;margin-bottom:5px;text-decoration:none}
-#ytp-download[hidden]{display:none}
 @media(max-width:600px){.ytp-fields{grid-template-columns:minmax(0,1fr) auto}.ytp-fields label{grid-column:1 / -1}.ytp-fields label[for="ytp-key"]{grid-column:1 / -1}.ytp-fields #ytp-key{grid-column:1 / -1}.ytp-inner{padding:0 9px 11px}}
 </style>
 <link rel="manifest" href="./manifest.webmanifest"/>
@@ -149,9 +147,8 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
    <input id="ytp-key" class="yt-input" type="password" autocomplete="off" placeholder="Beta key · not saved"/>
   </div>
   <label class="ytp-approval"><input type="checkbox" id="ytp-rights"/><span>I own this audio or have permission to download and use it.</span></label>
-  <div class="ytp-actions"><button id="ytp-convert" class="btn primary" type="button">CONVERT + SAVE MP3</button><a class="ytp-docs" href="https://ytpmp3.com/api-docs" rel="noopener" target="_blank">Get API access ↗</a></div>
+  <div class="ytp-actions"><button id="ytp-convert" class="btn primary" type="button">CONVERT + SAVE MP3</button><button id="ytp-test" class="btn small" type="button">TEST CONNECTION</button><a class="ytp-docs" href="https://ytpmp3.com/api-docs" rel="noopener" target="_blank">Get API access ↗</a></div>
   <p class="ytp-message" id="ytp-status" role="status">Beta API key required.</p>
-  <a id="ytp-download" class="btn small" rel="noopener" target="_blank" hidden>DOWNLOAD MP3</a>
   <p class="ytp-note">Provider requires an activated beta API key. Conversion requires an internet connection. Your key is used in this browser and is never published to GitHub.</p>
  </div>
 </details>

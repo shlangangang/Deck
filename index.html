@@ -47,6 +47,8 @@
 @media(max-width:720px){.yt-results{grid-template-columns:repeat(2,minmax(0,1fr))}.deck-grid:has(.yt-mode){grid-template-columns:minmax(0,1fr)}}
 @media(max-width:450px){.yt-library{padding:11px}.yt-results{grid-template-columns:repeat(2,minmax(0,1fr))}.yt-form{grid-template-columns:1fr auto}.yt-input{padding:9px 8px;font-size:11px}.yt-library-head p{max-width:29ch}}
 </style>
+<link rel="manifest" href="./manifest.webmanifest"/>
+<link rel="icon" href="./icon.svg" type="image/svg+xml"/>
 </head>
 <body><div class="container">
 <header><div class="logo"><div class="logo-mark">◉</div><div><div class="brand">POCKET DECK</div><div class="byline">YOUTUBE + LOCAL AUDIO · ZERO AI TOKENS</div></div></div><div class="pill"><span class="dot"></span> ON DEVICE</div></header>
@@ -240,4 +242,5 @@ $('#yt-open-search').addEventListener('click',()=>{const query=$('#yt-query').va
 setInterval(()=>{for(const d of Object.values(deck))if(d.youtube&&d.ytReady&&ytPlayers[d.id]){try{d.position=ytPlayers[d.id].getCurrentTime()||0;d.duration=ytPlayers[d.id].getDuration()||0;updateTransport(d)}catch(e){}}},300);
 addEventListener('resize',()=>Object.values(deck).forEach(drawWave));Object.values(deck).forEach(drawWave);
 // Standalone single-file deployment: no service worker required.
-</script></body></html>
+</script><script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>
+</body></html>

@@ -75,6 +75,26 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
 .yt-api-details summary{color:#b5d9d7;font-size:11px;cursor:pointer;font-weight:700}
 .yt-api-details .yt-keyline{margin-top:9px}
 .yt-help{font-size:10px;color:var(--muted);margin:7px 0;line-height:1.4}
+/* Persistent local music library */
+.music-library{background:linear-gradient(135deg,#172537,#111824);border:1px solid var(--line);border-radius:17px;margin:0 0 12px;overflow:hidden}
+.music-library>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;list-style:none;cursor:pointer;font-weight:850;font-size:12px;letter-spacing:.07em;color:#bbefe5}
+.music-library>summary::-webkit-details-marker{display:none}
+.music-library>summary:before{content:"▸";margin-right:2px}.music-library[open]>summary:before{content:"▾"}
+.music-library>summary #lib-count{font-size:10px;letter-spacing:0;color:#a6bac9;white-space:nowrap}
+.lib-inner{padding:0 12px 12px}.lib-copy,.lib-hint{font-size:10px;color:var(--muted);line-height:1.5;margin:0 0 10px}
+.lib-hint{margin:10px 0 0;font-size:9px}
+.lib-toolbar{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.lib-toolbar button{white-space:nowrap}.lib-toolbar input{flex:1;width:100%;min-width:0}
+.lib-message{font-size:10px;color:#9ad7b9;min-height:16px;margin-bottom:7px}
+.lib-message.error{color:#ffb1b7}
+.lib-tracks{max-height:290px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:grid;gap:6px}
+.lib-item{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #304357;background:#0e1826;border-radius:10px;padding:8px;min-width:0}
+.lib-info{min-width:0;flex:1;display:grid;gap:3px}.lib-title{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lib-detail{font-size:9px;color:var(--muted)}
+.lib-acts{display:flex;gap:5px;flex-shrink:0;align-items:center}
+.lib-acts button{border:1px solid #40566d;background:#28384d;color:white;border-radius:7px;min-height:33px;min-width:33px;font-weight:800;padding:5px;touch-action:manipulation}
+.lib-acts .lib-target.a{background:#275d59;color:#b3fff2}.lib-acts .lib-target.b{background:#65513b;color:#ffddaa}
+.lib-acts .lib-delete{color:#ffadb5}.lib-empty{color:var(--muted);font-size:11px;margin:10px 0}
+@media(max-width:500px){.lib-toolbar{gap:5px}.lib-toolbar .btn{padding:8px;font-size:10px}.music-library>summary{padding:11px}.lib-inner{padding:0 10px 10px}}
 </style>
 <link rel="manifest" href="./manifest.webmanifest"/>
 <link rel="icon" href="./icon.svg" type="image/svg+xml"/>
@@ -95,6 +115,17 @@ html.scratch-active,html.scratch-active body{overflow:hidden;overscroll-behavior
  <label class="yt-consent"><input type="checkbox" id="yt-consent"/><span>I agree to the <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube Terms</a> and the <a href="#privacy">app privacy notice</a> before using YouTube services.</span></label>
  <div class="yt-micro">YouTube playback is in visible, official video players. Scratching, stems, filters, effects, loops and recording apply to <strong>local files only</strong>. YouTube on iPhone may require pressing play in the video itself; volume crossfade may be limited by iOS.</div>
 </section>
+
+<details class="music-library" id="music-library" open>
+ <summary><span>♫ SAVED MUSIC LIBRARY</span><span id="lib-count">0 songs</span></summary>
+ <div class="lib-inner">
+  <p class="lib-copy">Import music files you own or have permission to use. Songs stay on this device for quick loading into either DJ deck, including offline.</p>
+  <div class="lib-toolbar"><button class="btn primary small" type="button" id="lib-import-btn">＋ IMPORT MUSIC</button><input type="file" id="lib-files" accept="audio/*,.mp3,.m4a,.wav,.flac,.aac,.aiff,.ogg" multiple hidden/><input id="lib-filter" class="yt-input" type="search" placeholder="Find saved music…" aria-label="Search your saved music"/></div>
+  <div id="lib-message" role="status" class="lib-message">Preparing offline music library…</div>
+  <div id="lib-tracks" class="lib-tracks" role="list"></div>
+  <p class="lib-hint">Stored in your iPhone browser, not uploaded. Clearing Safari website data or removing the app may erase saved songs. Keep originals in Files.</p>
+ </div>
+</details>
 
 <section class="mixer"><div class="mixer-header"><span>MASTER CROSSFADER</span><span id="master-state">READY</span></div><div class="cross-row"><div class="fader-side a">A</div><input class="range" aria-label="Crossfader" id="cross" type="range" min="0" max="100" value="50"/><div class="fader-side b">B</div></div><div class="mixer-bottom"><span>A ◀</span><span>Drag toward the track you want to hear</span><span>▶ B</span></div></section>
 <main class="deck-grid">
@@ -301,5 +332,5 @@ $('#yt-open-search').addEventListener('click',()=>{const query=$('#yt-query').va
 setInterval(()=>{for(const d of Object.values(deck))if(d.youtube&&d.ytReady&&ytPlayers[d.id]){try{d.position=ytPlayers[d.id].getCurrentTime()||0;d.duration=ytPlayers[d.id].getDuration()||0;updateTransport(d)}catch(e){}}},300);
 addEventListener('resize',()=>Object.values(deck).forEach(drawWave));Object.values(deck).forEach(drawWave);
 // Standalone single-file deployment: no service worker required.
-</script><script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>
+</script><script src="./library.js" defer></script><script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("./sw.js").catch(()=>{});}</script>
 </body></html>
